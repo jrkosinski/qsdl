@@ -7,6 +7,15 @@ import OpenAI from 'openai';
 import dotenv from 'dotenv';
 dotenv.config();
 
+interface IStrategy {
+    name: string;
+    qsdl: any;
+}
+
+interface IStrategyParser {
+    parse(text: string): Promise<IStrategy>;
+}
+
 function testSchemaValidation() {
     //compile the schema
     const ajv = new Ajv({ allErrors: true, strict: false });

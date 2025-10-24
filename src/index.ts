@@ -2,10 +2,12 @@ import { qsdl1 } from './examples';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import { schema } from './schema';
+import OpenAI from 'openai';
 
-function main() {
-    console.log('Application started successfully');
+import dotenv from 'dotenv';
+dotenv.config();
 
+function testSchemaValidation() {
     //compile the schema
     const ajv = new Ajv({ allErrors: true, strict: false });
     addFormats(ajv);
@@ -18,6 +20,32 @@ function main() {
     } else {
         console.log('QSDL is valid');
     }
+}
+
+async function testOpenAI() {
+    const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY!,
+    });
+
+    const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+            { role: 'system', content: 'You are a helpful assistant.' },
+            {
+                role: 'user',
+                content: 'Explain quantum computing in simple terms.',
+            },
+        ],
+    });
+
+    console.log(completion.choices[0].message);
+}
+
+function main() {
+    console.log('Application started successfully');
+
+    testSchemaValidation();
+    testOpenAI();
 }
 
 main();

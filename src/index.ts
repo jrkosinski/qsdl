@@ -8,6 +8,10 @@ import prompts from 'prompts';
 import Anthropic from '@anthropic-ai/sdk';
 
 import dotenv from 'dotenv';
+import {
+    AnthropicMultiTurnConversation,
+    IUserInputModule,
+} from './llms/multi-turn-conversation';
 dotenv.config();
 
 interface IStrategy {
@@ -53,118 +57,44 @@ async function testAnthropic() {
     console.log('Anthropic response:', response);
 }
 
-async function multiTurnConversationTest(): Promise<string> {
-    const anthropic: Anthropic = new Anthropic({
-        apiKey: process.env.ANTHROPIC_API_KEY,
-    });
+async function multiTurnConversationTestTest(): Promise<string> {
+    const conversation = new AnthropicMultiTurnConversation();
 
-    interface Message {
-        role: 'user' | 'assistant';
-        content: string;
-    }
-
-    return new Promise<string>(async (resolve, reject) => {
-        const conversationHistory: Message[] = [];
-        let output = '';
-
-        console.log(chalk.blue.bold('\nTrading Strategy Converter\n'));
-        while (true) {
-            console.log(
-                chalk.gray("Type 'exit' or 'quit' to end the conversation.\n")
-            );
-
-            //read user input
+    const inputModule: IUserInputModule = {
+        async getUserResponse(): Promise<string> {
             const response = await prompts({
                 type: 'text',
                 name: 'message',
                 message: chalk.green('You:'),
             });
-            const userMessage = response.message?.trim();
-
-            //check for exit
-            if (
-                !userMessage ||
-                userMessage.toLowerCase() === 'exit' ||
-                userMessage.toLowerCase() === 'quit'
-            ) {
-                output = 'user exited the conversation';
-                console.log(chalk.yellow('\n👋 Goodbye!\n'));
-                break;
-            }
-
-            // Add user message to history
-            conversationHistory.push({
-                role: 'user',
-                content: userMessage,
+            return response.message?.trim();
+        },
+        async onUserExit(): Promise<void> {
+            console.log(chalk.yellow('\n👋 Goodbye!\n'));
+        },
+        async onResponse(response: string): Promise<string> {
+            console.log(chalk.cyan('Response:'), response);
+            console.log(); // Empty line for spacing
+            return response;
+        },
+        async onQuestion(question: string): Promise<string> {
+            const response = await prompts({
+                type: 'text',
+                name: 'answer',
+                message: chalk.green(question),
             });
+            return response.answer?.trim();
+        },
+        async onStats(stats: string): Promise<void> {
+            console.log(chalk.gray(`ℹ️  ${stats}\n`));
+        },
+        async onError(error: any): Promise<void> {
+            console.error(chalk.red('\n❌ Error:'), error);
+            console.log();
+        },
+    };
 
-            try {
-                // Call Anthropic API with conversation history
-                const apiResponse = await anthropic.messages.create({
-                    model: 'claude-sonnet-4-5-20250929',
-                    max_tokens: 4096,
-                    system: [
-                        {
-                            type: 'text',
-                            text: userMessage,
-                        },
-                        /*{
-                            type: 'text',
-                            text: `Here's the JSON schema:\n${JSON.stringify(
-                                schema,
-                                null,
-                                2
-                            )}`,
-                            cache_control: { type: 'ephemeral' }, // Cache the schema
-                        },*/
-                    ],
-                    messages: conversationHistory.map((msg) => ({
-                        role: msg.role,
-                        content: msg.content,
-                    })),
-                });
-
-                // Extract assistant's response
-                const assistantMessage =
-                    apiResponse.content[0].type === 'text'
-                        ? apiResponse.content[0].text
-                        : '';
-
-                // Add assistant message to history
-                conversationHistory.push({
-                    role: 'assistant',
-                    content: assistantMessage,
-                });
-
-                // Display assistant response
-                console.log(chalk.cyan('\nClaude:'), assistantMessage);
-                console.log(); // Empty line for spacing
-
-                // Show cache usage stats if available
-                if (apiResponse.usage) {
-                    const cacheStats = [
-                        apiResponse.usage.cache_creation_input_tokens
-                            ? `Cache created: ${apiResponse.usage.cache_creation_input_tokens} tokens`
-                            : null,
-                        apiResponse.usage.cache_read_input_tokens
-                            ? `Cache hit: ${apiResponse.usage.cache_read_input_tokens} tokens`
-                            : null,
-                    ]
-                        .filter(Boolean)
-                        .join(' | ');
-
-                    if (cacheStats) {
-                        console.log(chalk.gray(`ℹ️  ${cacheStats}\n`));
-                    }
-                }
-            } catch (error) {
-                console.error(chalk.red('\n❌ Error:'), error);
-                console.log();
-            }
-        }
-
-        return output;
-    });
+    return await conversation.startConversation(inputModule);
 }
 
 function main() {
@@ -173,7 +103,7 @@ function main() {
     //testSchemaValidation();
     //testOpenAI();
     //testAnthropic();
-    multiTurnConversationTest().then((r) => {
+    multiTurnConversationTestTest().then((r) => {
         console.log(r);
     });
 }

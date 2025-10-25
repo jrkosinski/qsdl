@@ -45,8 +45,7 @@ export class AnthropicLLMApi implements ILLMApi {
             messages: [{ role: 'user', content: prompt }],
         });
 
-        console.log('Assistant says:', response.content);
-        console.log('Assistant says:', response.content[0]);
+        console.log('Anthropic says:', response.content);
         return (response.content[0] as any).text;
     }
 }

@@ -60,15 +60,15 @@ export class AnthropicMultiTurnConversation {
                                 type: 'text',
                                 text: userMessage,
                             },
-                            /*{
-                            type: 'text',
-                            text: `Here's the JSON schema:\n${JSON.stringify(
-                                schema,
-                                null,
-                                2
-                            )}`,
-                            cache_control: { type: 'ephemeral' }, // Cache the schema
-                        },*/
+                            {
+                                type: 'text',
+                                text: `Here's the JSON schema:\n${JSON.stringify(
+                                    schema,
+                                    null,
+                                    2
+                                )}`,
+                                cache_control: { type: 'ephemeral' }, // Cache the schema
+                            },
                         ],
                         messages: conversationHistory.map((msg) => ({
                             role: msg.role,
@@ -89,7 +89,14 @@ export class AnthropicMultiTurnConversation {
                     });
 
                     // Display assistant response
-                    await inputModule.onResponse(assistantMessage);
+                    if (assistantMessage.startsWith('Q:')) {
+                        await inputModule.onQuestion(
+                            assistantMessage.substring(2).trim()
+                        );
+                    } else {
+                        output = JSON.parse(assistantMessage.trim());
+                        break;
+                    }
 
                     // Show cache usage stats if available
                     if (apiResponse.usage) {

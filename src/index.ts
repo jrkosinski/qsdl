@@ -19,7 +19,6 @@ interface IStrategy {
     qsdl: any;
 }
 
-//1. multi-turn conversation
 //2. cached prompt with schema and full instructions
 //3. final confirmation step
 //4. schema improvements
@@ -78,12 +77,9 @@ async function multiTurnConversationTestTest(): Promise<string> {
             return response;
         },
         async onQuestion(question: string): Promise<string> {
-            const response = await prompts({
-                type: 'text',
-                name: 'answer',
-                message: chalk.green(question),
-            });
-            return response.answer?.trim();
+            console.log(chalk.cyan('Question:'), question);
+            console.log(); // Empty line for spacing
+            return question;
         },
         async onStats(stats: string): Promise<void> {
             console.log(chalk.gray(`ℹ️  ${stats}\n`));

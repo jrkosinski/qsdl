@@ -2,7 +2,7 @@ import { qsdl1 } from './examples';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import { schema } from './schema';
-import OpenAI from 'openai';
+import { AnthropicLLMApi, OpenAILLMApi } from './llms';
 
 import dotenv from 'dotenv';
 dotenv.config();
@@ -32,29 +32,25 @@ function testSchemaValidation() {
 }
 
 async function testOpenAI() {
-    const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY!,
-    });
+    const openai = new OpenAILLMApi(process.env.OPENAI_API_KEY || '');
+    const response = await openai.query('say either yes or no, no other words');
+    console.log('OpenAI response:', response);
+}
 
-    const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-            { role: 'system', content: 'You are a helpful assistant.' },
-            {
-                role: 'user',
-                content: 'Explain quantum computing in simple terms.',
-            },
-        ],
-    });
-
-    console.log(completion.choices[0].message);
+async function testAnthropic() {
+    const anthropic = new AnthropicLLMApi(process.env.ANTHROPIC_API_KEY || '');
+    const response = await anthropic.query(
+        'say either yes or no, no other words'
+    );
+    console.log('Anthropic response:', response);
 }
 
 function main() {
     console.log('Application started successfully');
 
     testSchemaValidation();
-    testOpenAI();
+    //testOpenAI();
+    testAnthropic();
 }
 
 main();

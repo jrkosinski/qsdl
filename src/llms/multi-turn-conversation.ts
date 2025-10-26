@@ -75,7 +75,7 @@ export class AnthropicMultiTurnConversation {
                             },
                             {
                                 type: 'text',
-                                text: `Here's the JSON schema:\n${JSON.stringify(
+                                text: `I'm going to give you a schema for a json document. And a text description of a trading strategy. I would like you to convert the text description into a chunk of json that satisfies the schema. If there are any questions or things that need clarification (information missing), then ask before generating the json. But preface all of your questions with a Q: or else I will assume what you're sending me is pure json. Here's the JSON schema:\n${JSON.stringify(
                                     schema,
                                     null,
                                     2
@@ -121,11 +121,17 @@ export class AnthropicMultiTurnConversation {
                                         '✅ Generated JSON is valid against the schema.'
                                     );
                                     break;
+                                } else {
+                                    inputModule.onMessage(
+                                        `❌ Generated JSON is NOT valid against the schema. Attempting retry ${
+                                            n + 1
+                                        } of ${SCHEMA_FAIL_MAX_RETRIES}...`
+                                    );
                                 }
                             } catch (err) {
                                 //let claude know it needs to retry
                                 inputModule.onMessage(
-                                    `Response is not valid JSON. Attempting retry ${
+                                    `❌ Response is not valid JSON. Attempting retry ${
                                         n + 1
                                     } of ${SCHEMA_FAIL_MAX_RETRIES}...`
                                 );
@@ -160,6 +166,7 @@ export class AnthropicMultiTurnConversation {
         });
     }
 
+    //TODO: move this out to a separate module
     private validateJson(json: any): boolean {
         //compile the schema
         const ajv = new Ajv({ allErrors: true, strict: false });

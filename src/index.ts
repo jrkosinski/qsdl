@@ -18,7 +18,8 @@ interface IStrategy {
     qsdl: any;
 }
 
-//2. cached prompt with schema and full instructions
+//1. cached prompt with schema and full instructions
+//2. schema validation
 //3. final confirmation step
 //4. schema improvements
 

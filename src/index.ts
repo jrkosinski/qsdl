@@ -65,7 +65,15 @@ async function multiTurnConversationTestTest(): Promise<string> {
             const response = await prompts({
                 type: 'text',
                 name: 'message',
-                message: chalk.green('You:'),
+                message: chalk.green('Answer here:'),
+            });
+            return response.message?.trim();
+        },
+        async promptUser(prompt: string): Promise<string> {
+            const response = await prompts({
+                type: 'text',
+                name: 'message',
+                message: chalk.green(prompt),
             });
             return response.message?.trim();
         },

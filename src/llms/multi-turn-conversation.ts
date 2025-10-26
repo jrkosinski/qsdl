@@ -4,6 +4,7 @@ import addFormats from 'ajv-formats';
 import Anthropic from '@anthropic-ai/sdk';
 
 export interface IUserInputModule {
+    promptUser(prompt: string): Promise<string>;
     getUserResponse(): Promise<string>;
     onUserExit(): Promise<void>;
     onResponse(response: string): Promise<string>;
@@ -14,8 +15,10 @@ export interface IUserInputModule {
 }
 
 const SCHEMA_FAIL_MAX_RETRIES = 3;
-const MAX_QUESTION_LOOP = 10; //TODO: use this
+const MAX_QUESTION_LOOP = 10;
 const INITIAL_SYSTEM_PROMPT = `I'm going to give you a schema for a json document. And a text description of a trading strategy. I would like you to convert the text description into a chunk of json that satisfies the schema. If there are any questions or things that need clarification (information missing), then ask before generating the json. But preface all of your questions with a Q: and when you send me json, send me nothing but json (no text explanation accompanying it).`;
+const ANTHROPIC_LLM_MODEL = 'claude-sonnet-4-5-20250929';
+const DEFAULT_MAX_TOKENS = 4096;
 
 interface Message {
     role: 'user' | 'assistant';
@@ -36,6 +39,7 @@ export class AnthropicMultiTurnConversation {
     ): Promise<any> {
         const conversationHistory: Message[] = [];
         let output = '';
+        let haveValidOutput: boolean = false;
 
         inputModule.onMessage(
             'Starting multi-turn conversation with Anthropic API...'
@@ -61,9 +65,17 @@ export class AnthropicMultiTurnConversation {
             },
         ];
 
+        let isFirstTime: boolean = true;
+
         while (true) {
             //read user input
-            const userMessage = await inputModule.getUserResponse();
+            const userMessage = isFirstTime
+                ? (
+                      await inputModule.promptUser(
+                          'Explain the trading strategy:'
+                      )
+                  ).trim()
+                : (await inputModule.getUserResponse()).trim();
 
             //check for exit
             if (
@@ -83,11 +95,11 @@ export class AnthropicMultiTurnConversation {
             });
 
             try {
-                //call Anthropic API with conversation history
+                //call Anthropic API with conversation history and initial system prompt
                 inputModule.onMessage('Sending message to Anthropic API...');
                 const apiResponse = await this.api.messages.create({
-                    model: 'claude-sonnet-4-5-20250929',
-                    max_tokens: 4096,
+                    model: ANTHROPIC_LLM_MODEL,
+                    max_tokens: DEFAULT_MAX_TOKENS,
                     system: SYSTEM_PROMPT,
                     messages: conversationHistory.map((msg) => ({
                         role: msg.role,
@@ -110,9 +122,18 @@ export class AnthropicMultiTurnConversation {
                 //display assistant response
                 if (assistantMessage.startsWith('Q:')) {
                     questionCount++;
+                    if (questionCount > MAX_QUESTION_LOOP) {
+                        await inputModule.onError(
+                            'Maximum question limit reached. Exiting conversation.'
+                        );
+                        break;
+                    }
+
                     await inputModule.onQuestion(
                         assistantMessage.substring(2).trim()
                     );
+
+                    //will loop around now to collect answer to the question
                 } else {
                     await inputModule.onMessage(
                         'Received json from assistant.'
@@ -149,8 +170,8 @@ export class AnthropicMultiTurnConversation {
                                 // Call API again to get corrected JSON
                                 const retryResponse =
                                     await this.api.messages.create({
-                                        model: 'claude-sonnet-4-5-20250929',
-                                        max_tokens: 4096,
+                                        model: ANTHROPIC_LLM_MODEL,
+                                        max_tokens: DEFAULT_MAX_TOKENS,
                                         system: SYSTEM_PROMPT,
                                         messages: conversationHistory.map(
                                             (msg) => ({
@@ -160,19 +181,19 @@ export class AnthropicMultiTurnConversation {
                                         ),
                                     });
 
-                                const retryMessage =
+                                const retryResponseMessage =
                                     retryResponse.content[0].type === 'text'
                                         ? retryResponse.content[0].text
                                         : '';
 
                                 conversationHistory.push({
                                     role: 'assistant',
-                                    content: retryMessage,
+                                    content: retryResponseMessage,
                                 });
 
                                 // Update assistantMessage for next iteration
                                 output = this.parseJsonSafe(
-                                    retryMessage.trim()
+                                    retryResponseMessage.trim()
                                 );
                             }
                         } catch (err) {
@@ -184,7 +205,9 @@ export class AnthropicMultiTurnConversation {
                             );
                         }
                     }
-                    break;
+
+                    //now we have output; will break & end conversation
+                    haveValidOutput = true;
                 }
 
                 // Show cache usage stats if available
@@ -204,6 +227,8 @@ export class AnthropicMultiTurnConversation {
                         await inputModule.onStats(cacheStats);
                     }
                 }
+
+                if (haveValidOutput) break;
             } catch (error) {
                 await inputModule.onError(error);
             }
@@ -227,16 +252,20 @@ export class AnthropicMultiTurnConversation {
         try {
             const startBracketIndex = jsonString.indexOf('{');
             const endBracketIndex = jsonString.lastIndexOf('}');
+
             if (startBracketIndex < 0 || endBracketIndex < 0) {
-                return null;
+                throw new Error('No JSON object found in the response');
             }
+
+            //remove everything that isn't json
             jsonString = jsonString.substring(
                 startBracketIndex,
                 endBracketIndex + 1
             );
+
             return JSON.parse(jsonString);
         } catch (error) {
-            return null;
+            throw error;
         }
     }
 }

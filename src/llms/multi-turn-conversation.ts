@@ -1,5 +1,6 @@
 import { schema } from '../schema';
-import prompts from 'prompts';
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
 import Anthropic from '@anthropic-ai/sdk';
 
 export interface IUserInputModule {
@@ -9,7 +10,11 @@ export interface IUserInputModule {
     onStats(stats: string): Promise<void>;
     onError(error: any): Promise<void>;
     onQuestion(query: string): Promise<string>;
+    onMessage(message: string): Promise<void>;
 }
+
+const SCHEMA_FAIL_MAX_RETRIES = 3;
+const MAX_QUESTION_LOOP = 10; //TODO: use this
 
 export class AnthropicMultiTurnConversation {
     private api: Anthropic;
@@ -20,7 +25,9 @@ export class AnthropicMultiTurnConversation {
         });
     }
 
-    async startConversation(inputModule: IUserInputModule): Promise<any> {
+    public async startConversation(
+        inputModule: IUserInputModule
+    ): Promise<any> {
         interface Message {
             role: 'user' | 'assistant';
             content: string;
@@ -29,6 +36,10 @@ export class AnthropicMultiTurnConversation {
         return new Promise<string>(async (resolve, reject) => {
             const conversationHistory: Message[] = [];
             let output = '';
+
+            inputModule.onMessage(
+                'Starting multi-turn conversation with Anthropic API...'
+            );
 
             while (true) {
                 //read user input
@@ -51,7 +62,9 @@ export class AnthropicMultiTurnConversation {
                 });
 
                 try {
-                    // Call Anthropic API with conversation history
+                    inputModule.onMessage('Starting conversation...');
+
+                    //call Anthropic API with conversation history
                     const apiResponse = await this.api.messages.create({
                         model: 'claude-sonnet-4-5-20250929',
                         max_tokens: 4096,
@@ -76,25 +89,48 @@ export class AnthropicMultiTurnConversation {
                         })),
                     });
 
-                    // Extract assistant's response
+                    //extract assistant's response
                     const assistantMessage =
                         apiResponse.content[0].type === 'text'
                             ? apiResponse.content[0].text
                             : '';
 
-                    // Add assistant message to history
+                    //add assistant message to history
                     conversationHistory.push({
                         role: 'assistant',
                         content: assistantMessage,
                     });
 
-                    // Display assistant response
+                    //display assistant response
                     if (assistantMessage.startsWith('Q:')) {
                         await inputModule.onQuestion(
                             assistantMessage.substring(2).trim()
                         );
                     } else {
                         output = JSON.parse(assistantMessage.trim());
+
+                        //here test against the schema
+                        inputModule.onMessage(
+                            'Validating generated json against schema...'
+                        );
+
+                        for (let n = 0; n < SCHEMA_FAIL_MAX_RETRIES; n++) {
+                            try {
+                                if (this.validateJson(output)) {
+                                    await inputModule.onMessage(
+                                        '✅ Generated JSON is valid against the schema.'
+                                    );
+                                    break;
+                                }
+                            } catch (err) {
+                                //let claude know it needs to retry
+                                inputModule.onMessage(
+                                    `Response is not valid JSON. Attempting retry ${
+                                        n + 1
+                                    } of ${SCHEMA_FAIL_MAX_RETRIES}...`
+                                );
+                            }
+                        }
                         break;
                     }
 
@@ -122,5 +158,15 @@ export class AnthropicMultiTurnConversation {
 
             return output;
         });
+    }
+
+    private validateJson(json: any): boolean {
+        //compile the schema
+        const ajv = new Ajv({ allErrors: true, strict: false });
+        addFormats(ajv);
+        const validate = ajv.compile(schema);
+
+        //validate the example QSDL
+        return validate(json);
     }
 }

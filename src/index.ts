@@ -5,7 +5,6 @@ import { schema } from './schema';
 import { AnthropicLLMApi, OpenAILLMApi } from './llms';
 import chalk from 'chalk';
 import prompts from 'prompts';
-import Anthropic from '@anthropic-ai/sdk';
 
 import dotenv from 'dotenv';
 import {
@@ -87,6 +86,10 @@ async function multiTurnConversationTestTest(): Promise<string> {
         async onError(error: any): Promise<void> {
             console.error(chalk.red('\n❌ Error:'), error);
             console.log();
+        },
+        async onMessage(message: string): Promise<void> {
+            console.log(chalk.blue('💬 Message:'), message);
+            console.log(); // Empty line for spacing
         },
     };
 

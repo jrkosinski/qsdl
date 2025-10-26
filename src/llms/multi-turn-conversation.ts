@@ -27,6 +27,13 @@ interface Message {
 
 export class AnthropicMultiTurnConversation {
     private api: Anthropic;
+    private schemaFailureCount: number = SCHEMA_FAIL_MAX_RETRIES;
+    private maxQuestionCount: number = MAX_QUESTION_LOOP;
+    private initialSystemPrompt: string = INITIAL_SYSTEM_PROMPT;
+    private anthropicModel: string = ANTHROPIC_LLM_MODEL;
+    private defaultMaxTokens: number = DEFAULT_MAX_TOKENS;
+    private conversationHistory: Message[] = [];
+    private questionCount: number = 0;
 
     constructor() {
         this.api = new Anthropic({
@@ -37,198 +44,49 @@ export class AnthropicMultiTurnConversation {
     public async startConversation(
         inputModule: IUserInputModule
     ): Promise<any> {
-        const conversationHistory: Message[] = [];
-        let output = '';
+        let output: any = null;
         let haveValidOutput: boolean = false;
-
-        inputModule.onMessage(
-            'Starting multi-turn conversation with Anthropic API...'
-        );
-
-        let questionCount: number = 0;
-
-        //static initial system prompt
-        const SYSTEM_PROMPT: any = [
-            {
-                type: 'text',
-                text: INITIAL_SYSTEM_PROMPT,
-                cache_control: { type: 'ephemeral' }, // Cache the schema
-            },
-            {
-                type: 'text',
-                text: `Here's the JSON schema:\n${JSON.stringify(
-                    schema,
-                    null,
-                    2
-                )}`,
-                cache_control: { type: 'ephemeral' }, // Cache the schema
-            },
-        ];
-
         let isFirstTime: boolean = true;
 
+        //start message
+        await this.initialStartMessage(inputModule);
+
+        //go into conversation loop
         while (true) {
             //read user input
-            const userMessage = isFirstTime
-                ? (
-                      await inputModule.promptUser(
-                          'Explain the trading strategy:'
-                      )
-                  ).trim()
-                : (await inputModule.getUserResponse()).trim();
+            const userMessage = await this.readUserInput(
+                inputModule,
+                isFirstTime
+            );
+            isFirstTime = false;
 
-            //check for exit
-            if (
-                !userMessage ||
-                userMessage.toLowerCase() === 'exit' ||
-                userMessage.toLowerCase() === 'quit'
-            ) {
-                console.log('exiting...', userMessage);
-                await inputModule.onUserExit();
-                break;
-            }
+            //check for voluntary exit
+            if (await this.checkForExit(inputModule, userMessage)) break;
 
             // Add user message to history
-            conversationHistory.push({
-                role: 'user',
-                content: userMessage,
-            });
+            this.addConversationHistory(userMessage, 'user');
 
             try {
-                //call Anthropic API with conversation history and initial system prompt
-                inputModule.onMessage('Sending message to Anthropic API...');
-                const apiResponse = await this.api.messages.create({
-                    model: ANTHROPIC_LLM_MODEL,
-                    max_tokens: DEFAULT_MAX_TOKENS,
-                    system: SYSTEM_PROMPT,
-                    messages: conversationHistory.map((msg) => ({
-                        role: msg.role,
-                        content: msg.content,
-                    })),
-                });
-
-                //extract assistant's response
-                let assistantMessage =
-                    apiResponse.content[0].type === 'text'
-                        ? apiResponse.content[0].text
-                        : '';
-
-                //add assistant message to history
-                conversationHistory.push({
-                    role: 'assistant',
-                    content: assistantMessage,
-                });
+                let assistantMessage = await this.sendMessage(inputModule);
 
                 //display assistant response
                 if (assistantMessage.startsWith('Q:')) {
-                    questionCount++;
-                    if (questionCount > MAX_QUESTION_LOOP) {
-                        await inputModule.onError(
-                            'Maximum question limit reached. Exiting conversation.'
-                        );
-                        break;
-                    }
-
-                    await inputModule.onQuestion(
-                        assistantMessage.substring(2).trim()
+                    const maxQuestionsReached = await this.handleQuestion(
+                        inputModule,
+                        assistantMessage
                     );
+
+                    if (maxQuestionsReached) break;
 
                     //will loop around now to collect answer to the question
                 } else {
-                    await inputModule.onMessage(
-                        'Received json from assistant.'
+                    output = await this.handleJsonOutput(
+                        inputModule,
+                        assistantMessage
                     );
-                    output = this.parseJsonSafe(assistantMessage.trim());
-
-                    //here test against the schema
-                    inputModule.onMessage(
-                        'Validating generated json against schema...'
-                    );
-
-                    for (let n = 0; n < SCHEMA_FAIL_MAX_RETRIES; n++) {
-                        try {
-                            if (this.validateJson(output)) {
-                                await inputModule.onMessage(
-                                    '✅ Generated JSON is valid against the schema.'
-                                );
-                                break;
-                            } else {
-                                //TODO: retry schema validation failures
-                                inputModule.onMessage(
-                                    `❌ Generated JSON is NOT valid against the schema. Attempting retry ${
-                                        n + 1
-                                    } of ${SCHEMA_FAIL_MAX_RETRIES}...`
-                                );
-
-                                // Ask Claude to fix it
-                                conversationHistory.push({
-                                    role: 'user',
-                                    content:
-                                        'The JSON you provided does not validate against the schema. Please fix it and provide valid JSON.',
-                                });
-
-                                // Call API again to get corrected JSON
-                                const retryResponse =
-                                    await this.api.messages.create({
-                                        model: ANTHROPIC_LLM_MODEL,
-                                        max_tokens: DEFAULT_MAX_TOKENS,
-                                        system: SYSTEM_PROMPT,
-                                        messages: conversationHistory.map(
-                                            (msg) => ({
-                                                role: msg.role,
-                                                content: msg.content,
-                                            })
-                                        ),
-                                    });
-
-                                const retryResponseMessage =
-                                    retryResponse.content[0].type === 'text'
-                                        ? retryResponse.content[0].text
-                                        : '';
-
-                                conversationHistory.push({
-                                    role: 'assistant',
-                                    content: retryResponseMessage,
-                                });
-
-                                // Update assistantMessage for next iteration
-                                output = this.parseJsonSafe(
-                                    retryResponseMessage.trim()
-                                );
-                            }
-                        } catch (err) {
-                            //let claude know it needs to retry
-                            inputModule.onMessage(
-                                `❌ Response is not valid JSON. Attempting retry ${
-                                    n + 1
-                                } of ${SCHEMA_FAIL_MAX_RETRIES}...`
-                            );
-                        }
-                    }
-
-                    //now we have output; will break & end conversation
-                    haveValidOutput = true;
                 }
 
-                // Show cache usage stats if available
-                if (apiResponse.usage) {
-                    const cacheStats = [
-                        apiResponse.usage.cache_creation_input_tokens
-                            ? `Cache created: ${apiResponse.usage.cache_creation_input_tokens} tokens`
-                            : null,
-                        apiResponse.usage.cache_read_input_tokens
-                            ? `Cache hit: ${apiResponse.usage.cache_read_input_tokens} tokens`
-                            : null,
-                    ]
-                        .filter(Boolean)
-                        .join(' | ');
-
-                    if (cacheStats) {
-                        await inputModule.onStats(cacheStats);
-                    }
-                }
-
-                if (haveValidOutput) break;
+                if (output) break;
             } catch (error) {
                 await inputModule.onError(error);
             }
@@ -246,6 +104,170 @@ export class AnthropicMultiTurnConversation {
 
         //validate the example QSDL
         return validate(json);
+    }
+
+    private async initialStartMessage(
+        inputModule: IUserInputModule
+    ): Promise<void> {
+        await inputModule.onMessage(
+            'Starting multi-turn conversation with Anthropic API...'
+        );
+    }
+
+    private async readUserInput(
+        inputModule: IUserInputModule,
+        isFirstTime: boolean
+    ): Promise<string> {
+        const userMessage = isFirstTime
+            ? (
+                  await inputModule.promptUser('Explain the trading strategy:')
+              ).trim()
+            : (await inputModule.getUserResponse()).trim();
+        return userMessage;
+    }
+
+    private addConversationHistory(
+        message: string,
+        role: 'user' | 'assistant'
+    ) {
+        this.conversationHistory.push({ role, content: message });
+    }
+
+    private async showCacheUsageStats(
+        apiResponse: any,
+        inputModule: IUserInputModule
+    ) {
+        if (apiResponse.usage) {
+            const cacheStats = [
+                apiResponse.usage.cache_creation_input_tokens
+                    ? `Cache created: ${apiResponse.usage.cache_creation_input_tokens} tokens`
+                    : null,
+                apiResponse.usage.cache_read_input_tokens
+                    ? `Cache hit: ${apiResponse.usage.cache_read_input_tokens} tokens`
+                    : null,
+            ]
+                .filter(Boolean)
+                .join(' | ');
+
+            if (cacheStats) {
+                await inputModule.onStats(cacheStats);
+            }
+        }
+    }
+
+    private async checkForExit(
+        inputModule: IUserInputModule,
+        userMessage: string
+    ): Promise<boolean> {
+        if (
+            !userMessage ||
+            userMessage.toLowerCase() === 'exit' ||
+            userMessage.toLowerCase() === 'quit'
+        ) {
+            console.log('exiting...', userMessage);
+            await inputModule.onUserExit();
+            return true;
+        }
+
+        return false;
+    }
+
+    private async sendMessage(inputModule: IUserInputModule): Promise<any> {
+        //static initial system prompt
+        const systemPrompt: any = [
+            {
+                type: 'text',
+                text: this.initialSystemPrompt,
+                cache_control: { type: 'ephemeral' }, // Cache the schema
+            },
+            {
+                type: 'text',
+                text: `Here's the JSON schema:\n${JSON.stringify(
+                    schema,
+                    null,
+                    2
+                )}`,
+                cache_control: { type: 'ephemeral' }, // Cache the schema
+            },
+        ];
+
+        //call Anthropic API with conversation history and initial system prompt
+        inputModule.onMessage('Sending message to Anthropic API...');
+        const apiResponse = await this.api.messages.create({
+            model: this.anthropicModel,
+            max_tokens: this.defaultMaxTokens,
+            system: systemPrompt,
+            messages: this.conversationHistory.map((msg) => ({
+                role: msg.role,
+                content: msg.content,
+            })),
+        });
+
+        //extract assistant's response
+        let assistantMessage =
+            apiResponse.content[0].type === 'text'
+                ? apiResponse.content[0].text
+                : '';
+
+        //add assistant message to history
+        this.addConversationHistory(assistantMessage, 'assistant');
+
+        //show cache usage stats if available
+        await this.showCacheUsageStats(apiResponse, inputModule);
+
+        return assistantMessage;
+    }
+
+    private async handleJsonOutput(
+        inputModule: IUserInputModule,
+        assistantMessage: string
+    ): Promise<any> {
+        await inputModule.onMessage('Received json from assistant.');
+        let json = this.parseJsonSafe(assistantMessage.trim());
+        let output: any = null;
+
+        //here test against the schema
+        inputModule.onMessage('Validating generated json against schema...');
+
+        for (let n = 0; n < SCHEMA_FAIL_MAX_RETRIES; n++) {
+            try {
+                if (this.validateJson(json)) {
+                    await inputModule.onMessage(
+                        '✅ Generated JSON is valid against the schema.'
+                    );
+                    output = json;
+                    break;
+                } else {
+                    //TODO: retry schema validation failures
+                    inputModule.onMessage(
+                        `❌ Generated JSON is NOT valid against the schema. Attempting retry ${
+                            n + 1
+                        } of ${SCHEMA_FAIL_MAX_RETRIES}...`
+                    );
+
+                    //ask Claude to fix it
+                    this.addConversationHistory(
+                        'The JSON you provided does not validate against the schema. Please fix it and provide valid JSON.',
+                        'user'
+                    );
+
+                    // Call API again to get corrected JSON
+                    const response = await this.sendMessage(inputModule);
+
+                    // Update assistantMessage for next iteration
+                    json = this.parseJsonSafe(response.trim());
+                }
+            } catch (err) {
+                //let claude know it needs to retry
+                await inputModule.onMessage(
+                    `❌ Response is not valid JSON. Attempting retry ${
+                        n + 1
+                    } of ${SCHEMA_FAIL_MAX_RETRIES}...`
+                );
+            }
+        }
+
+        return output;
     }
 
     private parseJsonSafe(jsonString: string): any | null {
@@ -267,5 +289,22 @@ export class AnthropicMultiTurnConversation {
         } catch (error) {
             throw error;
         }
+    }
+
+    private async handleQuestion(
+        inputModule: IUserInputModule,
+        assistantMessage: string
+    ): Promise<boolean> {
+        this.questionCount++;
+        if (this.questionCount > MAX_QUESTION_LOOP) {
+            await inputModule.onError(
+                'Maximum question limit reached. Exiting conversation.'
+            );
+            return false;
+        }
+
+        //ask the question to the user
+        await inputModule.onQuestion(assistantMessage.substring(2).trim());
+        return true;
     }
 }

@@ -14,7 +14,7 @@ export interface IUserInputModule {
 }
 
 const SCHEMA_FAIL_MAX_RETRIES = 3;
-const MAX_QUESTION_LOOP = 10;
+const MAX_QUESTION_LOOP_COUNT = 10;
 const INITIAL_SYSTEM_PROMPT = `I'm going to give you a schema for a json document. And a text description of a trading strategy. I would like you to convert the text description into a chunk of json that satisfies the schema. If there are any questions or things that need clarification (information missing), then ask before generating the json. But preface all of your questions with a Q: and when you send me json, send me nothing but json (no text explanation accompanying it).`;
 const ANTHROPIC_LLM_MODEL = 'claude-sonnet-4-5-20250929';
 const DEFAULT_MAX_TOKENS = 4096;
@@ -26,8 +26,8 @@ interface Message {
 
 export class AnthropicMultiTurnConversation {
     private api: Anthropic;
-    private schemaFailureCount: number = SCHEMA_FAIL_MAX_RETRIES;
-    private maxQuestionCount: number = MAX_QUESTION_LOOP;
+    private schemaFailureMaxRetries: number = SCHEMA_FAIL_MAX_RETRIES;
+    private maxQuestionCount: number = MAX_QUESTION_LOOP_COUNT;
     private initialSystemPrompt: string = INITIAL_SYSTEM_PROMPT;
     private anthropicModel: string = ANTHROPIC_LLM_MODEL;
     private defaultMaxTokens: number = DEFAULT_MAX_TOKENS;
@@ -244,7 +244,7 @@ export class AnthropicMultiTurnConversation {
         //here test against the schema
         inputModule.onMessage('Validating generated json against schema...');
 
-        for (let n = 0; n < SCHEMA_FAIL_MAX_RETRIES; n++) {
+        for (let n = 0; n < this.schemaFailureMaxRetries; n++) {
             try {
                 if (this.validateJson(json)) {
                     await inputModule.onMessage(
@@ -257,7 +257,7 @@ export class AnthropicMultiTurnConversation {
                     inputModule.onMessage(
                         `❌ Generated JSON is NOT valid against the schema. Attempting retry ${
                             n + 1
-                        } of ${SCHEMA_FAIL_MAX_RETRIES}...`
+                        } of ${this.schemaFailureMaxRetries}...`
                     );
 
                     //ask Claude to fix it
@@ -277,7 +277,7 @@ export class AnthropicMultiTurnConversation {
                 await inputModule.onMessage(
                     `❌ Response is not valid JSON. Attempting retry ${
                         n + 1
-                    } of ${SCHEMA_FAIL_MAX_RETRIES}...`
+                    } of ${this.schemaFailureMaxRetries}...`
                 );
             }
         }
@@ -329,7 +329,7 @@ export class AnthropicMultiTurnConversation {
         assistantMessage: string
     ): Promise<boolean> {
         this.questionCount++;
-        if (this.questionCount > MAX_QUESTION_LOOP) {
+        if (this.questionCount > this.maxQuestionCount) {
             await inputModule.onError(
                 'Maximum question limit reached. Exiting conversation.'
             );

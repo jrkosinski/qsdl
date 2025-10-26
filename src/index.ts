@@ -19,7 +19,6 @@ interface IStrategy {
     qsdl: any;
 }
 
-//3. final confirmation step
 //4. schema improvements
 
 interface IStrategyParser {

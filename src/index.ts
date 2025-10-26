@@ -59,19 +59,11 @@ async function multiTurnConversationTestTest(): Promise<string> {
     const conversation = new AnthropicMultiTurnConversation();
 
     const inputModule: IUserInputModule = {
-        async getUserResponse(): Promise<string> {
+        async getUserResponse(prompt: string): Promise<string> {
             const response = await prompts({
                 type: 'text',
                 name: 'message',
-                message: chalk.green('Answer here:'),
-            });
-            return response.message?.trim();
-        },
-        async promptUser(prompt: string): Promise<string> {
-            const response = await prompts({
-                type: 'text',
-                name: 'message',
-                message: chalk.green(prompt),
+                message: chalk.green(prompt ?? 'Answer:'),
             });
             return response.message?.trim();
         },

@@ -4,8 +4,7 @@ import addFormats from 'ajv-formats';
 import Anthropic from '@anthropic-ai/sdk';
 
 export interface IUserInputModule {
-    promptUser(prompt: string): Promise<string>;
-    getUserResponse(): Promise<string>;
+    getUserResponse(prompt: string): Promise<string>;
     onUserExit(): Promise<void>;
     onResponse(response: string): Promise<string>;
     onStats(stats: string): Promise<void>;
@@ -80,13 +79,27 @@ export class AnthropicMultiTurnConversation {
 
                     //will loop around now to collect answer to the question
                 } else {
-                    output = await this.handleJsonOutput(
+                    const tempOutput = await this.handleJsonOutput(
                         inputModule,
                         assistantMessage
                     );
-                }
 
-                if (output) break;
+                    if (tempOutput) {
+                        const confirmed = await this.finalConfirmation(
+                            inputModule,
+                            tempOutput
+                        );
+                        if (confirmed) {
+                            output = tempOutput;
+                            break;
+                        } else {
+                            inputModule.onQuestion(
+                                'Please provide the correct information or clarifications needed:'
+                            );
+                            //will loop around now to collect corrected info
+                        }
+                    }
+                }
             } catch (error) {
                 await inputModule.onError(error);
             }
@@ -120,9 +133,11 @@ export class AnthropicMultiTurnConversation {
     ): Promise<string> {
         const userMessage = isFirstTime
             ? (
-                  await inputModule.promptUser('Explain the trading strategy:')
+                  await inputModule.getUserResponse(
+                      'Explain the trading strategy:'
+                  )
               ).trim()
-            : (await inputModule.getUserResponse()).trim();
+            : (await inputModule.getUserResponse('Answer here:')).trim();
         return userMessage;
     }
 
@@ -268,6 +283,24 @@ export class AnthropicMultiTurnConversation {
         }
 
         return output;
+    }
+
+    private async finalConfirmation(
+        inputModule: IUserInputModule,
+        output: any
+    ): Promise<boolean> {
+        this.addConversationHistory(
+            'Explain your understand of this trading strategy back to me in words, so that I can confirm if you understood it. Do not prefix your response with Q:',
+            'user'
+        );
+
+        await this.sendMessage(inputModule);
+
+        const userResponse = await inputModule.getUserResponse(
+            'Is this explanation correct and satisfactory? Type Y or N:'
+        );
+
+        return userResponse.toLowerCase() === 'y';
     }
 
     private parseJsonSafe(jsonString: string): any | null {

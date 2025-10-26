@@ -1,6 +1,6 @@
 # Dependencies
 node_modules/
-src/examples/
+src/**/examples/*
 
 # Build output
 dist/

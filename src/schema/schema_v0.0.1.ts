@@ -1,6 +1,7 @@
 export const schema = {
     $schema: 'http://json-schema.org/draft-07/schema#',
     title: 'TradingStrategy',
+    version: '1.0.0',
     type: 'object',
     required: ['symbols', 'indicators', 'triggers', 'actions'],
     properties: {

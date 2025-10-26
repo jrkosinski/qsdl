@@ -1,10 +1,11 @@
 import { qsdl1, qsdl1_response1 } from './examples';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import { schema } from './schema';
+import { schema } from './schema/schema_v0.0.1';
 import { AnthropicLLMApi, OpenAILLMApi } from './llms';
 import chalk from 'chalk';
 import prompts from 'prompts';
+import fs from 'fs';
 
 import dotenv from 'dotenv';
 import {
@@ -105,6 +106,7 @@ function main() {
     //testAnthropic();
     multiTurnConversationTestTest().then((r) => {
         console.log(r);
+        fs.writeFileSync('output.json', JSON.stringify(r, null, 2));
     });
 }
 

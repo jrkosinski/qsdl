@@ -55,8 +55,6 @@ async function testAnthropic() {
 }
 
 async function multiTurnConversationTestTest(): Promise<string> {
-    const conversation = new AnthropicMultiTurnConversation();
-
     const inputModule: IUserInputModule = {
         async getUserResponse(prompt: string): Promise<string> {
             const response = await prompts({
@@ -92,7 +90,8 @@ async function multiTurnConversationTestTest(): Promise<string> {
         },
     };
 
-    return await conversation.startConversation(inputModule);
+    const conversation = new AnthropicMultiTurnConversation(inputModule);
+    return await conversation.startConversation();
 }
 
 function main() {

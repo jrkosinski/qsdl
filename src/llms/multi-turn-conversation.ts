@@ -15,10 +15,10 @@ export interface IUserInputModule {
 
 const SCHEMA_FAIL_MAX_RETRIES = 3;
 const MAX_QUESTION_LOOP_COUNT = 10;
-const INITIAL_SYSTEM_PROMPT = `I'm going to give you a schema for a json document. And a text description of a trading strategy. I would like you to convert the text description into a chunk of json that satisfies the schema. If there are any questions or things that need clarification (information missing), then ask before generating the json. But preface all of your responses that are questions with a 'Q:'. Ask one question at a time, or maximum two if they are related. Your job is to finally generate the json, so don't ask questions if the answers aren't necessary for generating the json (e.g. no need to ask questions about things that aren't directly reflected in the schema). When you send me json, send me nothing but json (no text explanation accompanying it).`;
+const INITIAL_SYSTEM_PROMPT = `I'm going to give you a schema for a json document. And a text description of a trading strategy. I would like you to convert the text description into a chunk of json that satisfies the schema. If there are any questions or things that need clarification (information missing), then ask before generating the json. But preface all of your responses that are questions with a 'Q:'. Ask one question at a time, or maximum two if they are related. Your job is to finally generate the json, so don't ask questions if the answers aren't necessary for generating the json (e.g. no need to ask questions about things that aren't directly reflected in the json schema). Do not discuss or answer things that are not directly about the trading strategy to be generated. When you send me json, send me nothing but json (no text explanation accompanying it). If not sending JSON, then always preface your response with 'Q:'`;
 const ANTHROPIC_LLM_MODEL = 'claude-sonnet-4-5-20250929';
 const DEFAULT_MAX_TOKENS = 4096;
-const CONSOLE_LOGGING_ENABLED = true;
+const CONSOLE_LOGGING_ENABLED = false;
 
 interface Message {
     role: 'user' | 'assistant';
@@ -34,50 +34,47 @@ export class AnthropicMultiTurnConversation {
     private defaultMaxTokens: number = DEFAULT_MAX_TOKENS;
     private conversationHistory: Message[] = [];
     private questionCount: number = 0;
+    private inputModule: IUserInputModule;
 
-    constructor() {
+    constructor(inputModule: IUserInputModule) {
+        this.inputModule = inputModule;
+        if (!inputModule) throw new Error('input module is required');
         this.api = new Anthropic({
             apiKey: process.env.ANTHROPIC_API_KEY,
         });
     }
 
-    public async startConversation(
-        inputModule: IUserInputModule
-    ): Promise<any> {
+    public async startConversation(): Promise<any> {
         let output: any = null;
         let haveValidOutput: boolean = false;
         let isFirstTime: boolean = true;
 
         //start message
-        await this.initialStartMessage(inputModule);
+        await this.initialStartMessage();
 
         //go into conversation loop
         while (true) {
             //read user input
-            const userMessage = await this.readUserInput(
-                inputModule,
-                isFirstTime
-            );
+            const userMessage = await this.readUserInput(isFirstTime);
             isFirstTime = false;
 
             //check for voluntary exit
-            if (await this.checkForExit(inputModule, userMessage)) break;
+            if (await this.checkForExit(userMessage)) break;
 
             // Add user message to history
             this.addConversationHistory(userMessage, 'user');
 
             try {
-                let assistantMessage = await this.sendMessage(inputModule);
+                let assistantMessage = await this.sendMessage();
 
                 //display assistant response
                 if (assistantMessage.startsWith('Q:')) {
                     const maxQuestionsReached = await this.handleQuestion(
-                        inputModule,
                         assistantMessage
                     );
 
                     if (maxQuestionsReached) {
-                        inputModule.onMessage(
+                        this.inputModule.onMessage(
                             'Maximum number of questions reached. We are having trouble completing this task; it might be too complex for us now. Exiting conversation. '
                         );
                         break;
@@ -86,20 +83,18 @@ export class AnthropicMultiTurnConversation {
                     //will loop around now to collect answer to the question
                 } else {
                     const tempOutput = await this.handleJsonOutput(
-                        inputModule,
                         assistantMessage
                     );
 
                     if (tempOutput) {
                         const confirmed = await this.finalConfirmation(
-                            inputModule,
                             tempOutput
                         );
                         if (confirmed) {
                             output = tempOutput;
                             break;
                         } else {
-                            await inputModule.onQuestion(
+                            await this.inputModule.onQuestion(
                                 'Please provide the correct information or clarifications needed:'
                             );
                             //will loop around now to collect corrected info
@@ -107,7 +102,7 @@ export class AnthropicMultiTurnConversation {
                     }
                 }
             } catch (error) {
-                await inputModule.onError(error);
+                await this.inputModule.onError(error);
             }
         }
 
@@ -125,25 +120,20 @@ export class AnthropicMultiTurnConversation {
         return validate(json);
     }
 
-    private async initialStartMessage(
-        inputModule: IUserInputModule
-    ): Promise<void> {
-        await inputModule.onMessage(
+    private async initialStartMessage(): Promise<void> {
+        await this.inputModule.onMessage(
             'Starting multi-turn conversation with Anthropic API...'
         );
     }
 
-    private async readUserInput(
-        inputModule: IUserInputModule,
-        isFirstTime: boolean
-    ): Promise<string> {
+    private async readUserInput(isFirstTime: boolean): Promise<string> {
         const userMessage = isFirstTime
             ? (
-                  await inputModule.getUserResponse(
+                  await this.inputModule.getUserResponse(
                       'Explain the trading strategy:'
                   )
               ).trim()
-            : (await inputModule.getUserResponse('Answer here:')).trim();
+            : (await this.inputModule.getUserResponse('Your reply:')).trim();
         return userMessage;
     }
 
@@ -155,10 +145,7 @@ export class AnthropicMultiTurnConversation {
         this.conversationHistory.push({ role, content: message });
     }
 
-    private async showCacheUsageStats(
-        apiResponse: any,
-        inputModule: IUserInputModule
-    ) {
+    private async showCacheUsageStats(apiResponse: any) {
         if (apiResponse.usage) {
             const cacheStats = [
                 apiResponse.usage.cache_creation_input_tokens
@@ -172,29 +159,26 @@ export class AnthropicMultiTurnConversation {
                 .join(' | ');
 
             if (cacheStats) {
-                await inputModule.onStats(cacheStats);
+                await this.inputModule.onStats(cacheStats);
             }
         }
     }
 
-    private async checkForExit(
-        inputModule: IUserInputModule,
-        userMessage: string
-    ): Promise<boolean> {
+    private async checkForExit(userMessage: string): Promise<boolean> {
         if (
             !userMessage ||
             userMessage.toLowerCase() === 'exit' ||
             userMessage.toLowerCase() === 'quit'
         ) {
-            inputModule.onMessage('Exiting....');
-            await inputModule.onUserExit();
+            this.inputModule.onMessage('Exiting....');
+            await this.inputModule.onUserExit();
             return true;
         }
 
         return false;
     }
 
-    private async sendMessage(inputModule: IUserInputModule): Promise<any> {
+    private async sendMessage(): Promise<any> {
         //static initial system prompt
         const systemPrompt: any = [
             {
@@ -214,7 +198,7 @@ export class AnthropicMultiTurnConversation {
         ];
 
         //call Anthropic API with conversation history and initial system prompt
-        await inputModule.onMessage('Sending message to Anthropic API...');
+        await this.inputModule.onMessage('Processing...');
         const apiResponse = await this.api.messages.create({
             model: this.anthropicModel,
             max_tokens: this.defaultMaxTokens,
@@ -235,35 +219,32 @@ export class AnthropicMultiTurnConversation {
         this.addConversationHistory(assistantMessage, 'assistant');
 
         //show cache usage stats if available
-        await this.showCacheUsageStats(apiResponse, inputModule);
+        await this.showCacheUsageStats(apiResponse);
 
         return assistantMessage;
     }
 
-    private async handleJsonOutput(
-        inputModule: IUserInputModule,
-        assistantMessage: string
-    ): Promise<any> {
-        await inputModule.onMessage('Received json from assistant.');
+    private async handleJsonOutput(assistantMessage: string): Promise<any> {
+        await this.inputModule.onMessage('Processing received json...');
         let json = this.parseJsonSafe(assistantMessage.trim());
         let output: any = null;
 
         //here test against the schema
-        await inputModule.onMessage(
+        await this.inputModule.onMessage(
             'Validating generated json against schema...'
         );
 
         for (let n = 0; n < this.schemaFailureMaxRetries; n++) {
             try {
                 if (this.validateJson(json)) {
-                    await inputModule.onMessage(
+                    await this.inputModule.onMessage(
                         '✅ Generated JSON is valid against the schema.'
                     );
                     output = json;
                     break;
                 } else {
                     //TODO: retry schema validation failures
-                    await inputModule.onMessage(
+                    await this.inputModule.onMessage(
                         `❌ Generated JSON is NOT valid against the schema. Attempting retry ${
                             n + 1
                         } of ${this.schemaFailureMaxRetries}...`
@@ -276,14 +257,14 @@ export class AnthropicMultiTurnConversation {
                     );
 
                     // Call API again to get corrected JSON
-                    const response = await this.sendMessage(inputModule);
+                    const response = await this.sendMessage();
 
                     // Update assistantMessage for next iteration
                     json = this.parseJsonSafe(response.trim());
                 }
             } catch (err) {
                 //let claude know it needs to retry
-                await inputModule.onMessage(
+                await this.inputModule.onMessage(
                     `❌ Response is not valid JSON. Attempting retry ${
                         n + 1
                     } of ${this.schemaFailureMaxRetries}...`
@@ -294,19 +275,16 @@ export class AnthropicMultiTurnConversation {
         return output;
     }
 
-    private async finalConfirmation(
-        inputModule: IUserInputModule,
-        output: any
-    ): Promise<boolean> {
+    private async finalConfirmation(output: any): Promise<boolean> {
         this.addConversationHistory(
             'Explain your understand of this trading strategy back to me in words, so that I can confirm if you understood it. Do not prefix your response with Q:',
             'user'
         );
 
-        const response = await this.sendMessage(inputModule);
+        const response = await this.sendMessage();
 
-        await inputModule.onMessage(response);
-        const userResponse = await inputModule.getUserResponse(
+        await this.inputModule.onMessage(response);
+        const userResponse = await this.inputModule.getUserResponse(
             'Is this explanation correct and satisfactory? Type Y or N:'
         );
 
@@ -334,20 +312,17 @@ export class AnthropicMultiTurnConversation {
         }
     }
 
-    private async handleQuestion(
-        inputModule: IUserInputModule,
-        assistantMessage: string
-    ): Promise<boolean> {
+    private async handleQuestion(assistantMessage: string): Promise<boolean> {
         this.questionCount++;
         if (this.questionCount > this.maxQuestionCount) {
-            await inputModule.onError(
+            await this.inputModule.onError(
                 'Maximum question limit reached. Exiting conversation.'
             );
             return true;
         }
 
         //ask the question to the user
-        await inputModule.onQuestion(assistantMessage.substring(2).trim());
+        await this.inputModule.onQuestion(assistantMessage.substring(2).trim());
         return false;
     }
 }

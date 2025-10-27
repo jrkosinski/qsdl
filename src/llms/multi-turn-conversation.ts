@@ -15,9 +15,10 @@ export interface IUserInputModule {
 
 const SCHEMA_FAIL_MAX_RETRIES = 3;
 const MAX_QUESTION_LOOP_COUNT = 10;
-const INITIAL_SYSTEM_PROMPT = `I'm going to give you a schema for a json document. And a text description of a trading strategy. I would like you to convert the text description into a chunk of json that satisfies the schema. If there are any questions or things that need clarification (information missing), then ask before generating the json. But preface all of your questions with a Q: and when you send me json, send me nothing but json (no text explanation accompanying it).`;
+const INITIAL_SYSTEM_PROMPT = `I'm going to give you a schema for a json document. And a text description of a trading strategy. I would like you to convert the text description into a chunk of json that satisfies the schema. If there are any questions or things that need clarification (information missing), then ask before generating the json. But preface all of your responses that are questions with a 'Q:'. Ask one question at a time, or maximum two if they are related. Your job is to finally generate the json, so don't ask questions if the answers aren't necessary for generating the json (e.g. no need to ask questions about things that aren't directly reflected in the schema). When you send me json, send me nothing but json (no text explanation accompanying it).`;
 const ANTHROPIC_LLM_MODEL = 'claude-sonnet-4-5-20250929';
 const DEFAULT_MAX_TOKENS = 4096;
+const CONSOLE_LOGGING_ENABLED = true;
 
 interface Message {
     role: 'user' | 'assistant';
@@ -75,7 +76,12 @@ export class AnthropicMultiTurnConversation {
                         assistantMessage
                     );
 
-                    if (maxQuestionsReached) break;
+                    if (maxQuestionsReached) {
+                        inputModule.onMessage(
+                            'Maximum number of questions reached. We are having trouble completing this task; it might be too complex for us now. Exiting conversation. '
+                        );
+                        break;
+                    }
 
                     //will loop around now to collect answer to the question
                 } else {
@@ -93,7 +99,7 @@ export class AnthropicMultiTurnConversation {
                             output = tempOutput;
                             break;
                         } else {
-                            inputModule.onQuestion(
+                            await inputModule.onQuestion(
                                 'Please provide the correct information or clarifications needed:'
                             );
                             //will loop around now to collect corrected info
@@ -145,6 +151,7 @@ export class AnthropicMultiTurnConversation {
         message: string,
         role: 'user' | 'assistant'
     ) {
+        if (CONSOLE_LOGGING_ENABLED) console.log(role, 'says: ', message);
         this.conversationHistory.push({ role, content: message });
     }
 
@@ -179,7 +186,7 @@ export class AnthropicMultiTurnConversation {
             userMessage.toLowerCase() === 'exit' ||
             userMessage.toLowerCase() === 'quit'
         ) {
-            console.log('exiting...', userMessage);
+            inputModule.onMessage('Exiting....');
             await inputModule.onUserExit();
             return true;
         }
@@ -207,7 +214,7 @@ export class AnthropicMultiTurnConversation {
         ];
 
         //call Anthropic API with conversation history and initial system prompt
-        inputModule.onMessage('Sending message to Anthropic API...');
+        await inputModule.onMessage('Sending message to Anthropic API...');
         const apiResponse = await this.api.messages.create({
             model: this.anthropicModel,
             max_tokens: this.defaultMaxTokens,
@@ -242,7 +249,9 @@ export class AnthropicMultiTurnConversation {
         let output: any = null;
 
         //here test against the schema
-        inputModule.onMessage('Validating generated json against schema...');
+        await inputModule.onMessage(
+            'Validating generated json against schema...'
+        );
 
         for (let n = 0; n < this.schemaFailureMaxRetries; n++) {
             try {
@@ -254,7 +263,7 @@ export class AnthropicMultiTurnConversation {
                     break;
                 } else {
                     //TODO: retry schema validation failures
-                    inputModule.onMessage(
+                    await inputModule.onMessage(
                         `❌ Generated JSON is NOT valid against the schema. Attempting retry ${
                             n + 1
                         } of ${this.schemaFailureMaxRetries}...`
@@ -294,8 +303,9 @@ export class AnthropicMultiTurnConversation {
             'user'
         );
 
-        await this.sendMessage(inputModule);
+        const response = await this.sendMessage(inputModule);
 
+        await inputModule.onMessage(response);
         const userResponse = await inputModule.getUserResponse(
             'Is this explanation correct and satisfactory? Type Y or N:'
         );
@@ -333,11 +343,11 @@ export class AnthropicMultiTurnConversation {
             await inputModule.onError(
                 'Maximum question limit reached. Exiting conversation.'
             );
-            return false;
+            return true;
         }
 
         //ask the question to the user
         await inputModule.onQuestion(assistantMessage.substring(2).trim());
-        return true;
+        return false;
     }
 }

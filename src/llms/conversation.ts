@@ -1,15 +1,57 @@
-import { schema } from '../schema/schema_v0.0.1';
+/**
+ * Multi-turn conversation handler for interactive trading strategy definition.
+ *
+ * This module implements an interactive conversation flow with Anthropic's Claude AI
+ * to convert natural language trading strategy descriptions into QSDL-compliant JSON.
+ * It manages the complete lifecycle of the conversation including:
+ *
+ * - Multi-turn dialogue with context preservation
+ * - Question-based clarification when information is missing
+ * - Automatic schema validation with retry logic
+ * - Final confirmation to ensure accurate understanding
+ * - Prompt caching for efficient API usage
+ *
+ * The conversation flow:
+ * 1. User provides initial strategy description
+ * 2. AI asks clarifying questions (prefixed with 'Q:')
+ * 3. User answers questions
+ * 4. AI generates JSON output
+ * 5. System validates JSON against QSDL schema
+ * 6. AI explains understanding back to user
+ * 7. User confirms or provides corrections
+ *
+ * Features:
+ * - Configurable retry limits for schema validation failures
+ * - Maximum question count to prevent infinite loops
+ * - Conversation history tracking
+ * - Cache optimization for system prompts and schema
+ * - Extensible input/output module interface for custom UI implementations
+ */
+
+import { schema } from '../schema/schema_v0.0.2';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import Anthropic from '@anthropic-ai/sdk';
 
+/**
+ * Interface for handling user input/output during the conversation.
+ * Provides hooks for various events in the conversation lifecycle,
+ * allowing custom implementations for different UI frameworks (CLI, web, etc.).
+ */
 export interface IUserInputModule {
+    /** Gets user response to a prompt */
     getUserResponse(prompt: string): Promise<string>;
+    /** Called when user exits the conversation */
     onUserExit(): Promise<void>;
+    /** Called when AI sends a response */
     onResponse(response: string): Promise<string>;
+    /** Called to display statistics (e.g., cache usage) */
     onStats(stats: string): Promise<void>;
+    /** Called when an error occurs */
     onError(error: any): Promise<void>;
+    /** Called when AI asks a question */
     onQuestion(query: string): Promise<string>;
+    /** Called to display a message to the user */
     onMessage(message: string): Promise<void>;
 }
 
@@ -20,12 +62,19 @@ const ANTHROPIC_LLM_MODEL = 'claude-sonnet-4-5-20250929';
 const DEFAULT_MAX_TOKENS = 4096;
 const CONSOLE_LOGGING_ENABLED = false;
 
+/**
+ * Represents a single message in the conversation history.
+ */
 interface Message {
     role: 'user' | 'assistant';
     content: string;
 }
 
-export class AnthropicMultiTurnConversation {
+/**
+ * Manages multi-turn conversations with Anthropic's Claude API for QSDL generation.
+ * Handles the complete conversation lifecycle including questions, validation, and confirmation.
+ */
+export class AnthropicConversation {
     private api: Anthropic;
     private schemaFailureMaxRetries: number = SCHEMA_FAIL_MAX_RETRIES;
     private maxQuestionCount: number = MAX_QUESTION_LOOP_COUNT;
@@ -36,6 +85,11 @@ export class AnthropicMultiTurnConversation {
     private questionCount: number = 0;
     private inputModule: IUserInputModule;
 
+    /**
+     * Creates a new AnthropicConversation instance.
+     * @param {IUserInputModule} inputModule - The input/output handler for user interactions
+     * @throws {Error} If inputModule is not provided
+     */
     constructor(inputModule: IUserInputModule) {
         this.inputModule = inputModule;
         if (!inputModule) throw new Error('input module is required');
@@ -44,6 +98,12 @@ export class AnthropicMultiTurnConversation {
         });
     }
 
+    /**
+     * Starts the multi-turn conversation flow.
+     * Orchestrates the entire process of gathering strategy information,
+     * asking clarifying questions, generating JSON, validating it, and confirming with the user.
+     * @returns {Promise<any>} The validated QSDL JSON object, or null if conversation was exited
+     */
     public async startConversation(): Promise<any> {
         let output: any = null;
         let haveValidOutput: boolean = false;
@@ -61,11 +121,12 @@ export class AnthropicMultiTurnConversation {
             //check for voluntary exit
             if (await this.checkForExit(userMessage)) break;
 
-            // Add user message to history
-            this.addConversationHistory(userMessage, 'user');
-
             try {
-                let assistantMessage = await this.sendMessage();
+                //send user message
+                let assistantMessage = await this.sendMessage(
+                    userMessage,
+                    'user'
+                );
 
                 //display assistant response
                 if (assistantMessage.startsWith('Q:')) {
@@ -109,7 +170,12 @@ export class AnthropicMultiTurnConversation {
         return output;
     }
 
-    //TODO: move this out to a separate module
+    /**
+     * Validates a JSON object against the QSDL schema using AJV.
+     * @param {any} json - The JSON object to validate
+     * @returns {boolean} True if valid, false otherwise
+     * @todo Move this out to a separate module
+     */
     private validateJson(json: any): boolean {
         //compile the schema
         const ajv = new Ajv({ allErrors: true, strict: false });
@@ -120,12 +186,20 @@ export class AnthropicMultiTurnConversation {
         return validate(json);
     }
 
+    /**
+     * Displays the initial welcome message when the conversation starts.
+     */
     private async initialStartMessage(): Promise<void> {
         await this.inputModule.onMessage(
             'Starting multi-turn conversation with Anthropic API...'
         );
     }
 
+    /**
+     * Reads user input with appropriate prompts.
+     * @param {boolean} isFirstTime - True if this is the first user input, false otherwise
+     * @returns {Promise<string>} The trimmed user input
+     */
     private async readUserInput(isFirstTime: boolean): Promise<string> {
         const userMessage = isFirstTime
             ? (
@@ -137,6 +211,11 @@ export class AnthropicMultiTurnConversation {
         return userMessage;
     }
 
+    /**
+     * Adds a message to the conversation history.
+     * @param {string} message - The message content
+     * @param {'user' | 'assistant'} role - The role of the message sender
+     */
     private addConversationHistory(
         message: string,
         role: 'user' | 'assistant'
@@ -145,6 +224,11 @@ export class AnthropicMultiTurnConversation {
         this.conversationHistory.push({ role, content: message });
     }
 
+    /**
+     * Displays cache usage statistics from the API response.
+     * Shows cache creation and cache hit metrics if available.
+     * @param {any} apiResponse - The API response containing usage information
+     */
     private async showCacheUsageStats(apiResponse: any) {
         if (apiResponse.usage) {
             const cacheStats = [
@@ -164,6 +248,12 @@ export class AnthropicMultiTurnConversation {
         }
     }
 
+    /**
+     * Checks if the user wants to exit the conversation.
+     * Exits if message is empty or contains 'exit' or 'quit'.
+     * @param {string} userMessage - The user's message to check
+     * @returns {Promise<boolean>} True if the user wants to exit, false otherwise
+     */
     private async checkForExit(userMessage: string): Promise<boolean> {
         if (
             !userMessage ||
@@ -178,7 +268,26 @@ export class AnthropicMultiTurnConversation {
         return false;
     }
 
-    private async sendMessage(): Promise<any> {
+    /**
+     * Adds a message to the conversation history, and then sends it.
+     * Same as calling addConversationHistory(message, role) and then updateConversation()
+     * @param {string} message - The message content
+     * @param {'user' | 'assistant'} role - The role of the message sender
+     */
+    private async sendMessage(
+        message: string,
+        role: 'user' | 'assistant'
+    ): Promise<any> {
+        this.addConversationHistory(message, role);
+        return await this.updateConversation();
+    }
+
+    /**
+     * Sends the current conversation to Anthropic's API and returns the response.
+     * Uses prompt caching for the system prompt and schema to reduce API costs.
+     * @returns {Promise<any>} The assistant's response message
+     */
+    private async updateConversation(): Promise<any> {
         //static initial system prompt
         const systemPrompt: any = [
             {
@@ -224,6 +333,12 @@ export class AnthropicMultiTurnConversation {
         return assistantMessage;
     }
 
+    /**
+     * Handles JSON output from the assistant.
+     * Parses the JSON, validates it against the schema, and retries if validation fails.
+     * @param {string} assistantMessage - The assistant's response containing JSON
+     * @returns {Promise<any>} The validated JSON object, or null if validation failed after all retries
+     */
     private async handleJsonOutput(assistantMessage: string): Promise<any> {
         await this.inputModule.onMessage('Processing received json...');
         let json = this.parseJsonSafe(assistantMessage.trim());
@@ -251,13 +366,10 @@ export class AnthropicMultiTurnConversation {
                     );
 
                     //ask Claude to fix it
-                    this.addConversationHistory(
+                    const response = await this.sendMessage(
                         'The JSON you provided does not validate against the schema. Please fix it and provide valid JSON.',
                         'user'
                     );
-
-                    // Call API again to get corrected JSON
-                    const response = await this.sendMessage();
 
                     // Update assistantMessage for next iteration
                     json = this.parseJsonSafe(response.trim());
@@ -275,13 +387,17 @@ export class AnthropicMultiTurnConversation {
         return output;
     }
 
+    /**
+     * Asks the assistant to explain its understanding and gets user confirmation.
+     * This ensures the AI correctly understood the strategy before finalizing.
+     * @param {any} output - The generated JSON output to confirm
+     * @returns {Promise<boolean>} True if user confirms, false otherwise
+     */
     private async finalConfirmation(output: any): Promise<boolean> {
-        this.addConversationHistory(
+        const response = await this.sendMessage(
             'Explain your understand of this trading strategy back to me in words, so that I can confirm if you understood it. Do not prefix your response with Q:',
             'user'
         );
-
-        const response = await this.sendMessage();
 
         await this.inputModule.onMessage(response);
         const userResponse = await this.inputModule.getUserResponse(
@@ -291,6 +407,13 @@ export class AnthropicMultiTurnConversation {
         return userResponse.toLowerCase() === 'y';
     }
 
+    /**
+     * Safely parses a JSON string, extracting only the JSON object portion.
+     * Removes any text before or after the JSON object.
+     * @param {string} jsonString - The string containing JSON (possibly with extra text)
+     * @returns {any | null} The parsed JSON object
+     * @throws {Error} If no valid JSON object is found or parsing fails
+     */
     private parseJsonSafe(jsonString: string): any | null {
         try {
             const startBracketIndex = jsonString.indexOf('{');
@@ -312,6 +435,12 @@ export class AnthropicMultiTurnConversation {
         }
     }
 
+    /**
+     * Handles a question from the assistant.
+     * Tracks question count and prevents infinite question loops.
+     * @param {string} assistantMessage - The assistant's question (prefixed with 'Q:')
+     * @returns {Promise<boolean>} True if max questions reached, false otherwise
+     */
     private async handleQuestion(assistantMessage: string): Promise<boolean> {
         this.questionCount++;
         if (this.questionCount > this.maxQuestionCount) {

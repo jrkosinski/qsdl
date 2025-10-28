@@ -1,3 +1,15 @@
+/**
+ * LLM API integrations for QSDL.
+ *
+ * This module provides unified interfaces and implementations for interacting with
+ * various Large Language Model providers (OpenAI and Anthropic). Each implementation
+ * follows the ILLMApi interface for consistent query handling across different providers.
+ *
+ * Supported providers:
+ * - OpenAI (GPT-4 models)
+ * - Anthropic (Claude models)
+ */
+
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 

@@ -1,3 +1,12 @@
+//TODO: more granular order types: stop
+//TODO: more granular order types: limit
+//TODO: more indicators with specific parameters relevant to each indicator
+//TODO: price formulas for stop price (e.g. stop price 1% less than entry price, 1.00 less than current, etc.)
+//TODO: price formulas for price triggers
+//TODO: portfolio mgmt parameters
+
+//TODO: unit tests for schema
+
 export const schema = {
     $schema: 'http://json-schema.org/draft-07/schema#',
     title: 'TradingStrategy',
@@ -14,20 +23,28 @@ export const schema = {
 
         indicators: {
             type: 'array',
-            minItems: 1,
+            minItems: 0,
             items: {
                 type: 'object',
                 required: ['id', 'type', 'symbol', 'params'],
                 properties: {
-                    id: { type: 'string' },
+                    id: { type: 'string' }, //must be unique among all indicators
                     type: {
                         type: 'string',
-                        enum: ['sma', 'ema', 'rsi', 'macd', 'atr', 'custom'],
+                        enum: [
+                            'price',
+                            'sma',
+                            'ema',
+                            'rsi',
+                            'macd',
+                            'atr',
+                            'custom',
+                        ], //standard indicators
                     },
                     symbol: { type: 'string' },
                     params: {
                         type: 'object',
-                        additionalProperties: true,
+                        additionalProperties: true, //need to make this more specific - specific to specific indicators
                     },
                 },
                 additionalProperties: false,
@@ -36,7 +53,31 @@ export const schema = {
 
         preconditions: {
             type: 'array',
-            items: { type: 'object' },
+            items: {
+                type: 'object',
+                required: ['id', 'type', 'symbol', 'params'],
+                properties: {
+                    id: { type: 'string' }, //must be unique among all indicators
+                    type: {
+                        type: 'string',
+                        enum: [
+                            'price',
+                            'sma',
+                            'ema',
+                            'rsi',
+                            'macd',
+                            'atr',
+                            'custom',
+                        ], //standard indicators
+                    },
+                    symbol: { type: 'string' },
+                    params: {
+                        type: 'object',
+                        additionalProperties: true, //need to make this more specific - specific to specific indicators
+                    },
+                },
+                additionalProperties: false,
+            },
             description:
                 'Optional global preconditions before triggers can activate.',
         },
@@ -102,12 +143,22 @@ export const schema = {
                             type: {
                                 type: 'string',
                                 enum: ['market', 'limit', 'stop'],
+                                //TODO: need specification for stop order
                             },
                             tif: {
                                 type: 'string',
                                 enum: ['day', 'gtc', 'ioc', 'fok'],
                             },
                             price: { type: ['number', 'null'] },
+                            limit_price: { type: 'number' },
+                        },
+                        if: {
+                            properties: {
+                                type: { const: 'limit' },
+                            },
+                        },
+                        then: {
+                            required: ['symbol', 'type', 'tif', 'limit_price'],
                         },
                         additionalProperties: false,
                     },

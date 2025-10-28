@@ -1,11 +1,14 @@
 import { WebSocketServer, WebSocket } from 'ws';
+import jwt from 'jsonwebtoken';
+import { IncomingMessage } from 'http';
 
 interface WebSocketServerConfig {
     port: number;
     host?: string;
+    jwtSecret: string;
 }
 
-export class WSServer {
+export class WebsocketServer {
     private wss: WebSocketServer | null = null;
     private clients: Set<WebSocket> = new Set();
     private config: WebSocketServerConfig;
@@ -14,13 +17,22 @@ export class WSServer {
         this.config = config;
     }
 
-    start(): void {
+    async start(): Promise<void> {
         this.wss = new WebSocketServer({
             port: this.config.port,
             host: this.config.host || 'localhost',
         });
 
-        this.wss.on('connection', (ws: WebSocket) => {
+        this.wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+            // Verify JWT token from query parameter or header
+            const token = this.extractToken(req);
+
+            if (!this.verifyToken(token)) {
+                console.log('Unauthorized connection attempt');
+                ws.close(1008, 'Unauthorized: Invalid or missing token');
+                return;
+            }
+
             console.log('New client connected');
             this.clients.add(ws);
 
@@ -39,7 +51,43 @@ export class WSServer {
             });
         });
 
-        console.log(`WebSocket server listening on ${this.config.host || 'localhost'}:${this.config.port}`);
+        console.log(
+            `WebSocket server listening on ${this.config.host || 'localhost'}:${
+                this.config.port
+            }`
+        );
+    }
+
+    private extractToken(req: IncomingMessage): string | null {
+        // Try to get token from query parameter
+        const url = new URL(req.url || '', `http://${req.headers.host}`);
+        const tokenFromQuery = url.searchParams.get('token');
+
+        if (tokenFromQuery) {
+            return tokenFromQuery;
+        }
+
+        // Try to get token from Authorization header
+        const authHeader = req.headers.authorization;
+        if (authHeader?.startsWith('Bearer ')) {
+            return authHeader.substring(7);
+        }
+
+        return null;
+    }
+
+    private verifyToken(token: string | null): boolean {
+        if (!token) {
+            return false;
+        }
+
+        try {
+            jwt.verify(token, this.config.jwtSecret);
+            return true;
+        } catch (error) {
+            console.error('JWT verification failed:', error);
+            return false;
+        }
     }
 
     private handleMessage(ws: WebSocket, data: Buffer): void {

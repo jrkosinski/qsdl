@@ -24,6 +24,7 @@ import fs from 'fs';
 
 import dotenv from 'dotenv';
 import { AnthropicConversation, IUserInputModule } from './llms/conversation';
+import { WebsocketServer } from './server/websocket-server';
 dotenv.config();
 
 /**
@@ -142,6 +143,10 @@ function main() {
     //testSchemaValidation();
     //testOpenAI();
     //testAnthropic();
+    new WebsocketServer({
+        port: 1077,
+        jwtSecret: process.env.JWT_SECRET || 'secret',
+    }).start();
     multiTurnConversationTestTest().then((r) => {
         console.log(r);
         fs.writeFileSync('output.json', JSON.stringify(r, null, 2));

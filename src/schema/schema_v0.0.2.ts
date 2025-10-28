@@ -4,6 +4,7 @@
 //TODO: price formulas for stop price (e.g. stop price 1% less than entry price, 1.00 less than current, etc.)
 //TODO: price formulas for price triggers
 //TODO: portfolio mgmt parameters
+//TODO: support for OCO orders
 
 //TODO: unit tests for schema
 
@@ -151,6 +152,7 @@ export const schema = {
                             },
                             price: { type: ['number', 'null'] },
                             limit_price: { type: 'number' },
+                            stop_type,
                         },
                         if: {
                             properties: {

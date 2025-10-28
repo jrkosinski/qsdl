@@ -4,6 +4,7 @@ src/**/examples/*
 
 # Build output
 dist/
+output.json
 
 # IDE
 .vscode/

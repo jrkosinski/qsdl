@@ -38,7 +38,7 @@ import Anthropic from '@anthropic-ai/sdk';
  * Provides hooks for various events in the conversation lifecycle,
  * allowing custom implementations for different UI frameworks (CLI, web, etc.).
  */
-export interface IUserInputModule {
+export interface IUserIOModule {
     /** Gets user response to a prompt */
     getUserResponse(prompt: string): Promise<string>;
     /** Called when user exits the conversation */
@@ -83,14 +83,14 @@ export class AnthropicConversation {
     private defaultMaxTokens: number = DEFAULT_MAX_TOKENS;
     private conversationHistory: Message[] = [];
     private questionCount: number = 0;
-    private inputModule: IUserInputModule;
+    private inputModule: IUserIOModule;
 
     /**
      * Creates a new AnthropicConversation instance.
-     * @param {IUserInputModule} inputModule - The input/output handler for user interactions
+     * @param {IUserIOModule} inputModule - The input/output handler for user interactions
      * @throws {Error} If inputModule is not provided
      */
-    constructor(inputModule: IUserInputModule) {
+    constructor(inputModule: IUserIOModule) {
         this.inputModule = inputModule;
         if (!inputModule) throw new Error('input module is required');
         this.api = new Anthropic({

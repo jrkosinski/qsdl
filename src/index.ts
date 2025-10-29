@@ -23,7 +23,7 @@ import prompts from 'prompts';
 import fs from 'fs';
 
 import dotenv from 'dotenv';
-import { AnthropicConversation, IUserInputModule } from './llms/conversation';
+import { AnthropicConversation, IUserIOModule } from './llms/conversation';
 import { WebsocketServer } from './server/websocket-server';
 dotenv.config();
 
@@ -93,7 +93,7 @@ async function testAnthropic() {
  * @returns {Promise<string>} The final QSDL JSON string generated from the conversation
  */
 async function multiTurnConversationTestTest(): Promise<string> {
-    const inputModule: IUserInputModule = {
+    const inputModule: IUserIOModule = {
         async getUserResponse(prompt: string): Promise<string> {
             const response = await prompts({
                 type: 'text',
@@ -147,6 +147,7 @@ function main() {
         port: 1077,
         jwtSecret: process.env.JWT_SECRET || 'secret',
     }).start();
+
     multiTurnConversationTestTest().then((r) => {
         console.log(r);
         fs.writeFileSync('output.json', JSON.stringify(r, null, 2));

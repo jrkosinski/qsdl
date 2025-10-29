@@ -113,27 +113,27 @@ export class AnthropicConversation {
         let isFirstTime: boolean = true;
 
         //start message
-        await this.initialStartMessage();
+        await this._initialStartMessage();
 
         //go into conversation loop
         while (true) {
             //read user input
-            const userMessage = await this.readUserInput(isFirstTime);
+            const userMessage = await this._readUserInput(isFirstTime);
             isFirstTime = false;
 
             //check for voluntary exit
-            if (await this.checkForExit(userMessage)) break;
+            if (await this._checkForExit(userMessage)) break;
 
             try {
                 //send user message
-                let assistantMessage = await this.sendMessage(
+                let assistantMessage = await this._sendMessage(
                     userMessage,
                     'user'
                 );
 
                 //display assistant response
                 if (assistantMessage.startsWith('Q:')) {
-                    const maxQuestionsReached = await this.handleQuestion(
+                    const maxQuestionsReached = await this._handleQuestion(
                         assistantMessage
                     );
 
@@ -146,12 +146,12 @@ export class AnthropicConversation {
 
                     //will loop around now to collect answer to the question
                 } else {
-                    const tempOutput = await this.handleJsonOutput(
+                    const tempOutput = await this._handleJsonOutput(
                         assistantMessage
                     );
 
                     if (tempOutput) {
-                        const confirmed = await this.finalConfirmation(
+                        const confirmed = await this._finalConfirmation(
                             tempOutput
                         );
                         if (confirmed) {
@@ -179,7 +179,7 @@ export class AnthropicConversation {
      * @returns {boolean} True if valid, false otherwise
      * @todo Move this out to a separate module
      */
-    private validateJson(json: any): boolean {
+    private _validateJson(json: any): boolean {
         //compile the schema
         const ajv = new Ajv({ allErrors: true, strict: false });
         addFormats(ajv);
@@ -192,7 +192,7 @@ export class AnthropicConversation {
     /**
      * Displays the initial welcome message when the conversation starts.
      */
-    private async initialStartMessage(): Promise<void> {
+    private async _initialStartMessage(): Promise<void> {
         await this._inputModule.onMessage(
             'Starting multi-turn conversation with Anthropic API...'
         );
@@ -203,7 +203,7 @@ export class AnthropicConversation {
      * @param {boolean} isFirstTime - True if this is the first user input, false otherwise
      * @returns {Promise<string>} The trimmed user input
      */
-    private async readUserInput(isFirstTime: boolean): Promise<string> {
+    private async _readUserInput(isFirstTime: boolean): Promise<string> {
         const userMessage = isFirstTime
             ? (
                   await this._inputModule.getUserResponse(
@@ -219,7 +219,7 @@ export class AnthropicConversation {
      * @param {string} message - The message content
      * @param {'user' | 'assistant'} role - The role of the message sender
      */
-    private addConversationHistory(
+    private _addConversationHistory(
         message: string,
         role: 'user' | 'assistant'
     ) {
@@ -232,7 +232,7 @@ export class AnthropicConversation {
      * Shows cache creation and cache hit metrics if available.
      * @param {any} apiResponse - The API response containing usage information
      */
-    private async showCacheUsageStats(apiResponse: any) {
+    private async _showCacheUsageStats(apiResponse: any) {
         if (apiResponse.usage) {
             const cacheStats = [
                 apiResponse.usage.cache_creation_input_tokens
@@ -257,7 +257,7 @@ export class AnthropicConversation {
      * @param {string} userMessage - The user's message to check
      * @returns {Promise<boolean>} True if the user wants to exit, false otherwise
      */
-    private async checkForExit(userMessage: string): Promise<boolean> {
+    private async _checkForExit(userMessage: string): Promise<boolean> {
         if (
             !userMessage ||
             userMessage.toLowerCase() === 'exit' ||
@@ -277,12 +277,12 @@ export class AnthropicConversation {
      * @param {string} message - The message content
      * @param {'user' | 'assistant'} role - The role of the message sender
      */
-    private async sendMessage(
+    private async _sendMessage(
         message: string,
         role: 'user' | 'assistant'
     ): Promise<any> {
-        this.addConversationHistory(message, role);
-        return await this.updateConversation();
+        this._addConversationHistory(message, role);
+        return await this._updateConversation();
     }
 
     /**
@@ -290,7 +290,7 @@ export class AnthropicConversation {
      * Uses prompt caching for the system prompt and schema to reduce API costs.
      * @returns {Promise<any>} The assistant's response message
      */
-    private async updateConversation(): Promise<any> {
+    private async _updateConversation(): Promise<any> {
         //static initial system prompt
         const systemPrompt: any = [
             {
@@ -328,10 +328,10 @@ export class AnthropicConversation {
                 : '';
 
         //add assistant message to history
-        this.addConversationHistory(assistantMessage, 'assistant');
+        this._addConversationHistory(assistantMessage, 'assistant');
 
         //show cache usage stats if available
-        await this.showCacheUsageStats(apiResponse);
+        await this._showCacheUsageStats(apiResponse);
 
         return assistantMessage;
     }
@@ -342,9 +342,9 @@ export class AnthropicConversation {
      * @param {string} assistantMessage - The assistant's response containing JSON
      * @returns {Promise<any>} The validated JSON object, or null if validation failed after all retries
      */
-    private async handleJsonOutput(assistantMessage: string): Promise<any> {
+    private async _handleJsonOutput(assistantMessage: string): Promise<any> {
         await this._inputModule.onMessage('Processing received json...');
-        let json = this.parseJsonSafe(assistantMessage.trim());
+        let json = this._parseJsonSafe(assistantMessage.trim());
         let output: any = null;
 
         //here test against the schema
@@ -354,7 +354,7 @@ export class AnthropicConversation {
 
         for (let n = 0; n < this._schemaFailureMaxRetries; n++) {
             try {
-                if (this.validateJson(json)) {
+                if (this._validateJson(json)) {
                     await this._inputModule.onMessage(
                         '✅ Generated JSON is valid against the schema.'
                     );
@@ -369,13 +369,13 @@ export class AnthropicConversation {
                     );
 
                     //ask Claude to fix it
-                    const response = await this.sendMessage(
+                    const response = await this._sendMessage(
                         'The JSON you provided does not validate against the schema. Please fix it and provide valid JSON.',
                         'user'
                     );
 
                     // Update assistantMessage for next iteration
-                    json = this.parseJsonSafe(response.trim());
+                    json = this._parseJsonSafe(response.trim());
                 }
             } catch (err) {
                 //let claude know it needs to retry
@@ -396,8 +396,8 @@ export class AnthropicConversation {
      * @param {any} output - The generated JSON output to confirm
      * @returns {Promise<boolean>} True if user confirms, false otherwise
      */
-    private async finalConfirmation(output: any): Promise<boolean> {
-        const response = await this.sendMessage(
+    private async _finalConfirmation(output: any): Promise<boolean> {
+        const response = await this._sendMessage(
             'Explain your understand of this trading strategy back to me in words, so that I can confirm if you understood it. Do not prefix your response with Q:',
             'user'
         );
@@ -417,7 +417,7 @@ export class AnthropicConversation {
      * @returns {any | null} The parsed JSON object
      * @throws {Error} If no valid JSON object is found or parsing fails
      */
-    private parseJsonSafe(jsonString: string): any | null {
+    private _parseJsonSafe(jsonString: string): any | null {
         try {
             const startBracketIndex = jsonString.indexOf('{');
             const endBracketIndex = jsonString.lastIndexOf('}');
@@ -444,7 +444,7 @@ export class AnthropicConversation {
      * @param {string} assistantMessage - The assistant's question (prefixed with 'Q:')
      * @returns {Promise<boolean>} True if max questions reached, false otherwise
      */
-    private async handleQuestion(assistantMessage: string): Promise<boolean> {
+    private async _handleQuestion(assistantMessage: string): Promise<boolean> {
         this._questionCount++;
         if (this._questionCount > this._maxQuestionCount) {
             await this._inputModule.onError(

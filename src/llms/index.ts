@@ -18,14 +18,14 @@ export interface ILLMApi {
 }
 
 export class OpenAILLMApi implements ILLMApi {
-    private api: OpenAI;
+    private _api: OpenAI;
 
     constructor(apiKey: string) {
-        this.api = new OpenAI({ apiKey });
+        this._api = new OpenAI({ apiKey });
     }
 
-    async query(prompt: string): Promise<string> {
-        const completion = await this.api.chat.completions.create({
+    public async query(prompt: string): Promise<string> {
+        const completion = await this._api.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
                 { role: 'system', content: 'You are a helpful assistant.' },
@@ -42,16 +42,16 @@ export class OpenAILLMApi implements ILLMApi {
 }
 
 export class AnthropicLLMApi implements ILLMApi {
-    private api: Anthropic;
+    private _api: Anthropic;
 
     constructor(apiKey: string) {
-        this.api = new Anthropic({
+        this._api = new Anthropic({
             apiKey: process.env.ANTHROPIC_API_KEY,
         });
     }
 
-    async query(prompt: string): Promise<string> {
-        const response = await this.api.messages.create({
+    public async query(prompt: string): Promise<string> {
+        const response = await this._api.messages.create({
             model: 'claude-sonnet-4-5-20250929', // pick the model you’re allowed to use
             max_tokens: 1024,
             messages: [{ role: 'user', content: prompt }],

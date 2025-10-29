@@ -23,8 +23,9 @@ import prompts from 'prompts';
 import fs from 'fs';
 
 import dotenv from 'dotenv';
-import { AnthropicConversation, IUserIOModule } from './llms/conversation';
-import { WebsocketServer } from './server/websocket-server';
+import { AnthropicConversation, IUserIO } from './llms/conversation';
+import { WebsocketConversationServer } from './server/websocket-server';
+import { WebsocketClient } from './client/websocket-client';
 dotenv.config();
 
 /**
@@ -35,6 +36,8 @@ interface IStrategy {
     qsdl: any;
 }
 
+//2. websocket server & client
+//3. logging
 //4. schema improvements
 
 /**
@@ -93,7 +96,7 @@ async function testAnthropic() {
  * @returns {Promise<string>} The final QSDL JSON string generated from the conversation
  */
 async function multiTurnConversationTestTest(): Promise<string> {
-    const inputModule: IUserIOModule = {
+    const inputModule: IUserIO = {
         async getUserResponse(prompt: string): Promise<string> {
             const response = await prompts({
                 type: 'text',
@@ -104,11 +107,6 @@ async function multiTurnConversationTestTest(): Promise<string> {
         },
         async onUserExit(): Promise<void> {
             console.log(chalk.yellow('\n👋 Goodbye!\n'));
-        },
-        async onResponse(response: string): Promise<string> {
-            console.log(chalk.cyan('Response:'), response);
-            console.log(); // Empty line for spacing
-            return response;
         },
         async onQuestion(question: string): Promise<string> {
             console.log(chalk.cyan('Question:'), question);
@@ -137,21 +135,29 @@ async function multiTurnConversationTestTest(): Promise<string> {
  * Initializes and starts the multi-turn conversation for QSDL strategy definition,
  * then saves the generated output to output.json.
  */
-function main() {
+async function main() {
     console.log('Application started successfully');
 
     //testSchemaValidation();
     //testOpenAI();
     //testAnthropic();
-    new WebsocketServer({
+    new WebsocketConversationServer({
         port: 1077,
         jwtSecret: process.env.JWT_SECRET || 'secret',
     }).start();
 
+    const client = new WebsocketClient({
+        url: 'http://localhost:1077',
+    });
+
+    await client.connect();
+
+    /*
     multiTurnConversationTestTest().then((r) => {
         console.log(r);
         fs.writeFileSync('output.json', JSON.stringify(r, null, 2));
     });
+    */
 }
 
 main();

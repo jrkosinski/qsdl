@@ -38,19 +38,22 @@ import Anthropic from '@anthropic-ai/sdk';
  * Provides hooks for various events in the conversation lifecycle,
  * allowing custom implementations for different UI frameworks (CLI, web, etc.).
  */
-export interface IUserIOModule {
+export interface IUserIO {
     /** Gets user response to a prompt */
     getUserResponse(prompt: string): Promise<string>;
+
     /** Called when user exits the conversation */
     onUserExit(): Promise<void>;
-    /** Called when AI sends a response */
-    onResponse(response: string): Promise<string>;
+
     /** Called to display statistics (e.g., cache usage) */
     onStats(stats: string): Promise<void>;
+
     /** Called when an error occurs */
     onError(error: any): Promise<void>;
+
     /** Called when AI asks a question */
     onQuestion(query: string): Promise<string>;
+
     /** Called to display a message to the user */
     onMessage(message: string): Promise<void>;
 }
@@ -75,25 +78,25 @@ interface Message {
  * Handles the complete conversation lifecycle including questions, validation, and confirmation.
  */
 export class AnthropicConversation {
-    private api: Anthropic;
-    private schemaFailureMaxRetries: number = SCHEMA_FAIL_MAX_RETRIES;
-    private maxQuestionCount: number = MAX_QUESTION_LOOP_COUNT;
-    private initialSystemPrompt: string = INITIAL_SYSTEM_PROMPT;
-    private anthropicModel: string = ANTHROPIC_LLM_MODEL;
-    private defaultMaxTokens: number = DEFAULT_MAX_TOKENS;
-    private conversationHistory: Message[] = [];
-    private questionCount: number = 0;
-    private inputModule: IUserIOModule;
+    private _api: Anthropic;
+    private _schemaFailureMaxRetries: number = SCHEMA_FAIL_MAX_RETRIES;
+    private _maxQuestionCount: number = MAX_QUESTION_LOOP_COUNT;
+    private _initialSystemPrompt: string = INITIAL_SYSTEM_PROMPT;
+    private _anthropicModel: string = ANTHROPIC_LLM_MODEL;
+    private _defaultMaxTokens: number = DEFAULT_MAX_TOKENS;
+    private _conversationHistory: Message[] = [];
+    private _questionCount: number = 0;
+    private _inputModule: IUserIO;
 
     /**
      * Creates a new AnthropicConversation instance.
-     * @param {IUserIOModule} inputModule - The input/output handler for user interactions
+     * @param {IUserIO} inputModule - The input/output handler for user interactions
      * @throws {Error} If inputModule is not provided
      */
-    constructor(inputModule: IUserIOModule) {
-        this.inputModule = inputModule;
+    constructor(inputModule: IUserIO) {
+        this._inputModule = inputModule;
         if (!inputModule) throw new Error('input module is required');
-        this.api = new Anthropic({
+        this._api = new Anthropic({
             apiKey: process.env.ANTHROPIC_API_KEY,
         });
     }
@@ -135,7 +138,7 @@ export class AnthropicConversation {
                     );
 
                     if (maxQuestionsReached) {
-                        this.inputModule.onMessage(
+                        this._inputModule.onMessage(
                             'Maximum number of questions reached. We are having trouble completing this task; it might be too complex for us now. Exiting conversation. '
                         );
                         break;
@@ -155,7 +158,7 @@ export class AnthropicConversation {
                             output = tempOutput;
                             break;
                         } else {
-                            await this.inputModule.onQuestion(
+                            await this._inputModule.onQuestion(
                                 'Please provide the correct information or clarifications needed:'
                             );
                             //will loop around now to collect corrected info
@@ -163,7 +166,7 @@ export class AnthropicConversation {
                     }
                 }
             } catch (error) {
-                await this.inputModule.onError(error);
+                await this._inputModule.onError(error);
             }
         }
 
@@ -190,7 +193,7 @@ export class AnthropicConversation {
      * Displays the initial welcome message when the conversation starts.
      */
     private async initialStartMessage(): Promise<void> {
-        await this.inputModule.onMessage(
+        await this._inputModule.onMessage(
             'Starting multi-turn conversation with Anthropic API...'
         );
     }
@@ -203,11 +206,11 @@ export class AnthropicConversation {
     private async readUserInput(isFirstTime: boolean): Promise<string> {
         const userMessage = isFirstTime
             ? (
-                  await this.inputModule.getUserResponse(
+                  await this._inputModule.getUserResponse(
                       'Explain the trading strategy:'
                   )
               ).trim()
-            : (await this.inputModule.getUserResponse('Your reply:')).trim();
+            : (await this._inputModule.getUserResponse('Your reply:')).trim();
         return userMessage;
     }
 
@@ -221,7 +224,7 @@ export class AnthropicConversation {
         role: 'user' | 'assistant'
     ) {
         if (CONSOLE_LOGGING_ENABLED) console.log(role, 'says: ', message);
-        this.conversationHistory.push({ role, content: message });
+        this._conversationHistory.push({ role, content: message });
     }
 
     /**
@@ -243,7 +246,7 @@ export class AnthropicConversation {
                 .join(' | ');
 
             if (cacheStats) {
-                await this.inputModule.onStats(cacheStats);
+                await this._inputModule.onStats(cacheStats);
             }
         }
     }
@@ -260,8 +263,8 @@ export class AnthropicConversation {
             userMessage.toLowerCase() === 'exit' ||
             userMessage.toLowerCase() === 'quit'
         ) {
-            this.inputModule.onMessage('Exiting....');
-            await this.inputModule.onUserExit();
+            this._inputModule.onMessage('Exiting....');
+            await this._inputModule.onUserExit();
             return true;
         }
 
@@ -292,7 +295,7 @@ export class AnthropicConversation {
         const systemPrompt: any = [
             {
                 type: 'text',
-                text: this.initialSystemPrompt,
+                text: this._initialSystemPrompt,
                 cache_control: { type: 'ephemeral' }, // Cache the schema
             },
             {
@@ -307,12 +310,12 @@ export class AnthropicConversation {
         ];
 
         //call Anthropic API with conversation history and initial system prompt
-        await this.inputModule.onMessage('Processing...');
-        const apiResponse = await this.api.messages.create({
-            model: this.anthropicModel,
-            max_tokens: this.defaultMaxTokens,
+        await this._inputModule.onMessage('Processing...');
+        const apiResponse = await this._api.messages.create({
+            model: this._anthropicModel,
+            max_tokens: this._defaultMaxTokens,
             system: systemPrompt,
-            messages: this.conversationHistory.map((msg) => ({
+            messages: this._conversationHistory.map((msg) => ({
                 role: msg.role,
                 content: msg.content,
             })),
@@ -340,29 +343,29 @@ export class AnthropicConversation {
      * @returns {Promise<any>} The validated JSON object, or null if validation failed after all retries
      */
     private async handleJsonOutput(assistantMessage: string): Promise<any> {
-        await this.inputModule.onMessage('Processing received json...');
+        await this._inputModule.onMessage('Processing received json...');
         let json = this.parseJsonSafe(assistantMessage.trim());
         let output: any = null;
 
         //here test against the schema
-        await this.inputModule.onMessage(
+        await this._inputModule.onMessage(
             'Validating generated json against schema...'
         );
 
-        for (let n = 0; n < this.schemaFailureMaxRetries; n++) {
+        for (let n = 0; n < this._schemaFailureMaxRetries; n++) {
             try {
                 if (this.validateJson(json)) {
-                    await this.inputModule.onMessage(
+                    await this._inputModule.onMessage(
                         '✅ Generated JSON is valid against the schema.'
                     );
                     output = json;
                     break;
                 } else {
                     //TODO: retry schema validation failures
-                    await this.inputModule.onMessage(
+                    await this._inputModule.onMessage(
                         `❌ Generated JSON is NOT valid against the schema. Attempting retry ${
                             n + 1
-                        } of ${this.schemaFailureMaxRetries}...`
+                        } of ${this._schemaFailureMaxRetries}...`
                     );
 
                     //ask Claude to fix it
@@ -376,10 +379,10 @@ export class AnthropicConversation {
                 }
             } catch (err) {
                 //let claude know it needs to retry
-                await this.inputModule.onMessage(
+                await this._inputModule.onMessage(
                     `❌ Response is not valid JSON. Attempting retry ${
                         n + 1
-                    } of ${this.schemaFailureMaxRetries}...`
+                    } of ${this._schemaFailureMaxRetries}...`
                 );
             }
         }
@@ -399,8 +402,8 @@ export class AnthropicConversation {
             'user'
         );
 
-        await this.inputModule.onMessage(response);
-        const userResponse = await this.inputModule.getUserResponse(
+        await this._inputModule.onMessage(response);
+        const userResponse = await this._inputModule.getUserResponse(
             'Is this explanation correct and satisfactory? Type Y or N:'
         );
 
@@ -442,16 +445,18 @@ export class AnthropicConversation {
      * @returns {Promise<boolean>} True if max questions reached, false otherwise
      */
     private async handleQuestion(assistantMessage: string): Promise<boolean> {
-        this.questionCount++;
-        if (this.questionCount > this.maxQuestionCount) {
-            await this.inputModule.onError(
+        this._questionCount++;
+        if (this._questionCount > this._maxQuestionCount) {
+            await this._inputModule.onError(
                 'Maximum question limit reached. Exiting conversation.'
             );
             return true;
         }
 
         //ask the question to the user
-        await this.inputModule.onQuestion(assistantMessage.substring(2).trim());
+        await this._inputModule.onQuestion(
+            assistantMessage.substring(2).trim()
+        );
         return false;
     }
 }

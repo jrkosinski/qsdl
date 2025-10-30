@@ -28,6 +28,36 @@ import { WebsocketConversationServer } from './server/websocket-server';
 import { WebsocketClient } from './client/websocket-client';
 dotenv.config();
 
+const inputModule: IUserIO = {
+    async getUserResponse(prompt: string): Promise<string> {
+        const response = await prompts({
+            type: 'text',
+            name: 'message',
+            message: chalk.green(prompt ?? 'Answer:'),
+        });
+        return response.message?.trim();
+    },
+    async onUserExit(): Promise<void> {
+        console.log(chalk.yellow('\n👋 Goodbye!\n'));
+    },
+    async onQuestion(question: string): Promise<string> {
+        console.log(chalk.cyan('Question:'), question);
+        console.log(); // Empty line for spacing
+        return question;
+    },
+    async onStats(stats: string): Promise<void> {
+        console.log(chalk.gray(`ℹ️  ${stats}\n`));
+    },
+    async onError(error: any): Promise<void> {
+        console.error(chalk.red('\n❌ Error:'), error);
+        console.log();
+    },
+    async onMessage(message: string): Promise<void> {
+        console.log(chalk.blue('💬 Message:'), message);
+        console.log(); // Empty line for spacing
+    },
+};
+
 /**
  * Represents a trading strategy with its name and QSDL definition.
  */
@@ -96,36 +126,6 @@ async function testAnthropic() {
  * @returns {Promise<string>} The final QSDL JSON string generated from the conversation
  */
 async function multiTurnConversationTestTest(): Promise<string> {
-    const inputModule: IUserIO = {
-        async getUserResponse(prompt: string): Promise<string> {
-            const response = await prompts({
-                type: 'text',
-                name: 'message',
-                message: chalk.green(prompt ?? 'Answer:'),
-            });
-            return response.message?.trim();
-        },
-        async onUserExit(): Promise<void> {
-            console.log(chalk.yellow('\n👋 Goodbye!\n'));
-        },
-        async onQuestion(question: string): Promise<string> {
-            console.log(chalk.cyan('Question:'), question);
-            console.log(); // Empty line for spacing
-            return question;
-        },
-        async onStats(stats: string): Promise<void> {
-            console.log(chalk.gray(`ℹ️  ${stats}\n`));
-        },
-        async onError(error: any): Promise<void> {
-            console.error(chalk.red('\n❌ Error:'), error);
-            console.log();
-        },
-        async onMessage(message: string): Promise<void> {
-            console.log(chalk.blue('💬 Message:'), message);
-            console.log(); // Empty line for spacing
-        },
-    };
-
     const conversation = new AnthropicConversation(inputModule);
     return await conversation.startConversation();
 }
@@ -150,6 +150,32 @@ async function main() {
         url: 'http://localhost:1077',
     });
 
+    client.onMessage(async (data) => {
+        if (data.startsWith('{') && data.endsWith('}')) {
+            const message: any = JSON.parse(data);
+            if (message.type == 'message') {
+                inputModule.onMessage(message.text);
+            }
+            if (message.type == 'prompt') {
+                const response = await inputModule.getUserResponse(
+                    message.text
+                );
+                client.send(response);
+            }
+            if (message.type == 'stats') {
+                inputModule.onStats(message.text);
+            }
+            if (message.type == 'error') {
+                inputModule.onError(message.text);
+            }
+            if (message.type == 'question') {
+                inputModule.onQuestion(message.text);
+            }
+        } else {
+            inputModule.onMessage(data);
+        }
+    });
+
     await client.connect();
 
     /*
@@ -158,6 +184,8 @@ async function main() {
         fs.writeFileSync('output.json', JSON.stringify(r, null, 2));
     });
     */
+
+    await new Promise(() => {}); // never resolves
 }
 
 main();

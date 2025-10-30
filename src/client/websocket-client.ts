@@ -96,7 +96,7 @@ export class WebsocketClient {
     }
 
     private _handleMessage(data: Buffer): void {
-        const message = data.toString();
+        let message = data.toString();
         this._logger.debug(`Client received: ${message}`);
 
         // Notify all registered message handlers

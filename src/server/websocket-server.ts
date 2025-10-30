@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { IncomingMessage } from 'http';
 import { AnthropicConversation, IUserIO } from '../llms/conversation';
 import { randomBytes } from 'crypto';
+import { Logger } from '../util/logger';
 
 const ENABLE_JWT_SECURITY = false;
 
@@ -13,7 +14,15 @@ interface WebSocketServerConfig {
 }
 
 function generateUniqueClientId(): string {
-    return randomBytes(32).toString();
+    return randomBytes(16).toString('hex');
+}
+
+enum MessageType {
+    prompt = 'prompt',
+    error = 'error',
+    stats = 'stats',
+    message = 'message',
+    question = 'question',
 }
 
 class WebsocketUserIO implements IUserIO {
@@ -21,27 +30,29 @@ class WebsocketUserIO implements IUserIO {
     private _server: WebsocketConversationServer;
     private _id: string;
     private _pendingResponse: ((value: string) => void) | null = null;
+    private _logger: Logger;
 
     public get id(): string {
-        return this.id;
+        return this._id;
     }
 
     constructor(server: WebsocketConversationServer, ws: WebSocket) {
         this._id = generateUniqueClientId();
         this._ws = ws;
         this._server = server;
+        this._logger = new Logger('WSIO-' + this.id);
 
         this._ws.on('message', (data: Buffer) => {
             this._handleMessage(ws, data);
         });
 
         this._ws.on('close', () => {
-            console.log('Client disconnected');
+            this._logger.debug('Client disconnected');
             this._server.onUserExit(this.id);
         });
 
         this._ws.on('error', (error: Error) => {
-            console.error('WebSocket error:', error);
+            this._logger.error('WebSocket error:', error);
             this._server.onUserExit(this.id);
         });
     }
@@ -58,14 +69,19 @@ class WebsocketUserIO implements IUserIO {
             }, 300000); // 5 minute timeout
 
             this._pendingResponse = (response: string) => {
+                this._logger.debug('clearing timeout');
                 clearTimeout(timeout);
+                this._logger.debug(
+                    'setting pending response to null, prompt is ' + prompt
+                );
                 this._pendingResponse = null;
+                this._logger.debug('resolving ' + response);
+
                 resolve(response);
             };
 
             // Send prompt to client
-            const message = JSON.stringify({ type: 'prompt', data: prompt });
-            this._sendToClient(message);
+            this._sendMessageToClient(MessageType.prompt, prompt);
         });
     }
 
@@ -78,12 +94,12 @@ class WebsocketUserIO implements IUserIO {
     /** Called to display statistics (e.g., cache usage) */
     public async onStats(stats: string): Promise<void> {
         //send response to client
-        this._sendToClient(stats);
+        this._sendMessageToClient(MessageType.stats, stats);
     }
 
     /** Called when an error occurs */
     public async onError(error: any): Promise<void> {
-        //TODO: send error to client
+        this._sendMessageToClient(MessageType.error, error.toString());
     }
 
     /** Called when AI asks a question */
@@ -94,17 +110,18 @@ class WebsocketUserIO implements IUserIO {
 
     /** Called to display a message to the user */
     public async onMessage(message: string): Promise<void> {
-        console.log('onMessage:', message);
+        this._logger.info('onMessage:' + message);
         //send message to client
-        this._sendMessageToClient('info', message);
+        this._sendMessageToClient(MessageType.message, message);
     }
 
     private _handleMessage(ws: WebSocket, data: Buffer): void {
         const message = data.toString();
-        console.log('Received:', message);
+        this._logger.info('Server received:' + message);
 
         // If we're waiting for a response, resolve the pending promise
         if (this._pendingResponse) {
+            this._logger.debug('there is a pending response, handling it...');
             this._pendingResponse(message);
         }
     }
@@ -115,7 +132,8 @@ class WebsocketUserIO implements IUserIO {
 
     private _sendToClient(data: any): void {
         if (this._ws.readyState === WebSocket.OPEN) {
-            this._ws.send(data);
+            this._logger.debug('Sending: ', data);
+            this._ws.send(JSON.stringify(data));
         }
     }
 }
@@ -124,6 +142,7 @@ export class WebsocketConversationServer {
     private _wss: WebSocketServer | null = null;
     private _clients: Set<{ ws: WebSocket; io: WebsocketUserIO }> = new Set();
     private _config: WebSocketServerConfig;
+    private _logger: Logger = new Logger('WSSERV');
 
     constructor(config: WebSocketServerConfig) {
         this._config = config;
@@ -141,20 +160,20 @@ export class WebsocketConversationServer {
                 const token = this._extractToken(req);
 
                 if (!this._verifyToken(token)) {
-                    console.log('Unauthorized connection attempt');
+                    this._logger.warn('Unauthorized connection attempt');
                     ws.close(1008, 'Unauthorized: Invalid or missing token');
                     return;
                 }
             }
 
-            console.log('New client connected');
+            this._logger.info('New client connected');
             const userIO = new WebsocketUserIO(this, ws);
             this._clients.add({ ws, io: userIO });
 
             new AnthropicConversation(userIO).startConversation();
         });
 
-        console.log(
+        this._logger.info(
             `WebSocket server listening on ${
                 this._config.host || 'localhost'
             }:${this._config.port}`
@@ -229,7 +248,7 @@ export class WebsocketConversationServer {
                 client.ws.close();
             });
             this._wss.close(() => {
-                console.log('WebSocket server stopped');
+                this._logger.info('WebSocket server stopped');
             });
             this._clients.clear();
         }

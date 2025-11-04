@@ -1,0 +1,118 @@
+{
+  "type": "TradingStrategy",
+  "symbol": "TSLA",
+  "indicators": [
+    {
+      "type": "IndicatorDefinition",
+      "name": "ema_50",
+      "indicator_type": "EMA",
+      "params": {
+        "period": 50
+      }
+    },
+    {
+      "type": "IndicatorDefinition",
+      "name": "ema_200",
+      "indicator_type": "EMA",
+      "params": {
+        "period": 200
+      }
+    },
+    {
+      "type": "IndicatorDefinition",
+      "name": "rsi_14",
+      "indicator_type": "RSI",
+      "params": {
+        "period": 14
+      }
+    }
+  ],
+  "rules": [
+    {
+      "type": "Rule",
+      "name": "entry_long_rule",
+      "condition": {
+        "type": "LogicalExpression",
+        "operator": "AND",
+        "operands": [
+          {
+            "type": "Comparison",
+            "left": {
+              "type": "PriceReference",
+              "symbol": "TSLA"
+            },
+            "operator": "LESS_THAN",
+            "right": {
+              "type": "Literal",
+              "value": 430,
+              "dataType": "number"
+            }
+          },
+          {
+            "type": "Comparison",
+            "left": {
+              "type": "IndicatorReference",
+              "name": "ema_50"
+            },
+            "operator": "GREATER_THAN",
+            "right": {
+              "type": "IndicatorReference",
+              "name": "ema_200"
+            }
+          },
+          {
+            "type": "Comparison",
+            "left": {
+              "type": "IndicatorReference",
+              "name": "rsi_14"
+            },
+            "operator": "GREATER_THAN",
+            "right": {
+              "type": "Literal",
+              "value": 60,
+              "dataType": "number"
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "OrderAction",
+        "action_type": "OPEN_POSITION",
+        "position": {
+          "type": "Position",
+          "direction": "LONG",
+          "symbol": "TSLA",
+          "order_type": "MARKET",
+          "max_size": 10
+        }
+      }
+    },
+    {
+      "type": "Rule",
+      "name": "exit_long_rule",
+      "condition": {
+        "type": "Comparison",
+        "left": {
+          "type": "IndicatorReference",
+          "name": "ema_50"
+        },
+        "operator": "LESS_THAN",
+        "right": {
+          "type": "IndicatorReference",
+          "name": "ema_200"
+        }
+      },
+      "action": {
+        "type": "OrderAction",
+        "action_type": "CLOSE_POSITION",
+        "position": {
+          "type": "Position",
+          "direction": "LONG",
+          "symbol": "TSLA",
+          "order_type": "MARKET",
+          "percent": 100
+        }
+      }
+    }
+  ]
+}

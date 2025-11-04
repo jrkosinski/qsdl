@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+src/**/examples/*
+
+# Build output
+dist/
+output.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

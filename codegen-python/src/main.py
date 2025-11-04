@@ -1,9 +1,9 @@
 from src.json_to_ast import transform_strategy
+from src.ast_to_code import JavaScriptGenerator
 import json
 
 
-# Example usage and test
-if __name__ == "__main__":
+def json_to_ast(): 
     # Load the original strategy JSON
     original_strategy = {
         "symbols": ["TSLA"],
@@ -112,3 +112,17 @@ if __name__ == "__main__":
     
     print("\n" + "=" * 60)
     print("AST saved to transformed_ast.json")
+
+def ast_to_code(): 
+    with open('transformed_ast.json', 'r') as f:
+        ast = json.load(f)
+    
+    print("\n" + "=" * 60)
+    print("JAVASCRIPT CODE:")
+    print("=" * 60)
+    codegen = JavaScriptGenerator(ast)
+    print(codegen.generate())
+
+# Example usage and test
+if __name__ == "__main__":
+    ast_to_code()

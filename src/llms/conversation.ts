@@ -32,6 +32,7 @@ import { schema } from '../schema/schema_v0.0.2';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import Anthropic from '@anthropic-ai/sdk';
+import { Logger } from '../util/logger';
 
 /**
  * Interface for handling user input/output during the conversation.
@@ -52,7 +53,7 @@ export interface IUserIO {
     onError(error: any): Promise<void>;
 
     /** Called when AI asks a question */
-    onQuestion(query: string): Promise<string>;
+    onQuestion(query: string): Promise<void>;
 
     /** Called to display a message to the user */
     onMessage(message: string): Promise<void>;
@@ -64,6 +65,10 @@ const INITIAL_SYSTEM_PROMPT = `I'm going to give you a schema for a json documen
 const ANTHROPIC_LLM_MODEL = 'claude-sonnet-4-5-20250929';
 const DEFAULT_MAX_TOKENS = 4096;
 const CONSOLE_LOGGING_ENABLED = false;
+
+async function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 /**
  * Represents a single message in the conversation history.
@@ -87,6 +92,8 @@ export class AnthropicConversation {
     private _conversationHistory: Message[] = [];
     private _questionCount: number = 0;
     private _inputModule: IUserIO;
+    private _mockMode: boolean = false;
+    private _logger: Logger = new Logger('ANTHC');
 
     /**
      * Creates a new AnthropicConversation instance.
@@ -108,6 +115,7 @@ export class AnthropicConversation {
      * @returns {Promise<any>} The validated QSDL JSON object, or null if conversation was exited
      */
     public async startConversation(): Promise<any> {
+        this._logger.debug('startConversation');
         let output: any = null;
         let haveValidOutput: boolean = false;
         let isFirstTime: boolean = true;
@@ -117,6 +125,10 @@ export class AnthropicConversation {
 
         //go into conversation loop
         while (true) {
+            this._logger.debug(
+                'a new loop of conversation; first time? ' + isFirstTime
+            );
+
             //read user input
             const userMessage = await this._readUserInput(isFirstTime);
             isFirstTime = false;
@@ -126,6 +138,7 @@ export class AnthropicConversation {
 
             try {
                 //send user message
+                this._logger.debug('sending msg to user');
                 let assistantMessage = await this._sendMessage(
                     userMessage,
                     'user'
@@ -133,6 +146,7 @@ export class AnthropicConversation {
 
                 //display assistant response
                 if (assistantMessage.startsWith('Q:')) {
+                    this._logger.debug('got a question');
                     const maxQuestionsReached = await this._handleQuestion(
                         assistantMessage
                     );
@@ -146,6 +160,7 @@ export class AnthropicConversation {
 
                     //will loop around now to collect answer to the question
                 } else {
+                    this._logger.debug('not a question');
                     const tempOutput = await this._handleJsonOutput(
                         assistantMessage
                     );
@@ -166,6 +181,7 @@ export class AnthropicConversation {
                     }
                 }
             } catch (error) {
+                this._logger.debug('got an error');
                 await this._inputModule.onError(error);
             }
         }
@@ -180,6 +196,7 @@ export class AnthropicConversation {
      * @todo Move this out to a separate module
      */
     private _validateJson(json: any): boolean {
+        this._logger.debug('_validateJson');
         //compile the schema
         const ajv = new Ajv({ allErrors: true, strict: false });
         addFormats(ajv);
@@ -193,6 +210,7 @@ export class AnthropicConversation {
      * Displays the initial welcome message when the conversation starts.
      */
     private async _initialStartMessage(): Promise<void> {
+        this._logger.debug('_initialStartMessage');
         await this._inputModule.onMessage(
             'Starting multi-turn conversation with Anthropic API...'
         );
@@ -204,6 +222,7 @@ export class AnthropicConversation {
      * @returns {Promise<string>} The trimmed user input
      */
     private async _readUserInput(isFirstTime: boolean): Promise<string> {
+        this._logger.debug('_readUserInput');
         const userMessage = isFirstTime
             ? (
                   await this._inputModule.getUserResponse(
@@ -223,6 +242,7 @@ export class AnthropicConversation {
         message: string,
         role: 'user' | 'assistant'
     ) {
+        this._logger.debug('_addConversationHistory');
         if (CONSOLE_LOGGING_ENABLED) console.log(role, 'says: ', message);
         this._conversationHistory.push({ role, content: message });
     }
@@ -233,6 +253,7 @@ export class AnthropicConversation {
      * @param {any} apiResponse - The API response containing usage information
      */
     private async _showCacheUsageStats(apiResponse: any) {
+        this._logger.debug('_showCacheUsageStats');
         if (apiResponse.usage) {
             const cacheStats = [
                 apiResponse.usage.cache_creation_input_tokens
@@ -258,6 +279,7 @@ export class AnthropicConversation {
      * @returns {Promise<boolean>} True if the user wants to exit, false otherwise
      */
     private async _checkForExit(userMessage: string): Promise<boolean> {
+        this._logger.debug('_checkForExit');
         if (
             !userMessage ||
             userMessage.toLowerCase() === 'exit' ||
@@ -281,6 +303,7 @@ export class AnthropicConversation {
         message: string,
         role: 'user' | 'assistant'
     ): Promise<any> {
+        this._logger.debug('_sendMessage');
         this._addConversationHistory(message, role);
         return await this._updateConversation();
     }
@@ -291,6 +314,8 @@ export class AnthropicConversation {
      * @returns {Promise<any>} The assistant's response message
      */
     private async _updateConversation(): Promise<any> {
+        this._logger.debug('_validateJson');
+
         //static initial system prompt
         const systemPrompt: any = [
             {
@@ -311,29 +336,34 @@ export class AnthropicConversation {
 
         //call Anthropic API with conversation history and initial system prompt
         await this._inputModule.onMessage('Processing...');
-        const apiResponse = await this._api.messages.create({
-            model: this._anthropicModel,
-            max_tokens: this._defaultMaxTokens,
-            system: systemPrompt,
-            messages: this._conversationHistory.map((msg) => ({
-                role: msg.role,
-                content: msg.content,
-            })),
-        });
+        if (this._mockMode) {
+            await sleep(1000);
+            return 'Q: Mock response from api';
+        } else {
+            const apiResponse = await this._api.messages.create({
+                model: this._anthropicModel,
+                max_tokens: this._defaultMaxTokens,
+                system: systemPrompt,
+                messages: this._conversationHistory.map((msg) => ({
+                    role: msg.role,
+                    content: msg.content,
+                })),
+            });
 
-        //extract assistant's response
-        let assistantMessage =
-            apiResponse.content[0].type === 'text'
-                ? apiResponse.content[0].text
-                : '';
+            //extract assistant's response
+            let assistantMessage =
+                apiResponse.content[0].type === 'text'
+                    ? apiResponse.content[0].text
+                    : '';
 
-        //add assistant message to history
-        this._addConversationHistory(assistantMessage, 'assistant');
+            //add assistant message to history
+            this._addConversationHistory(assistantMessage, 'assistant');
 
-        //show cache usage stats if available
-        await this._showCacheUsageStats(apiResponse);
+            //show cache usage stats if available
+            await this._showCacheUsageStats(apiResponse);
 
-        return assistantMessage;
+            return assistantMessage;
+        }
     }
 
     /**
@@ -343,6 +373,8 @@ export class AnthropicConversation {
      * @returns {Promise<any>} The validated JSON object, or null if validation failed after all retries
      */
     private async _handleJsonOutput(assistantMessage: string): Promise<any> {
+        this._logger.debug('_handleJsonOutput');
+
         await this._inputModule.onMessage('Processing received json...');
         let json = this._parseJsonSafe(assistantMessage.trim());
         let output: any = null;
@@ -397,6 +429,8 @@ export class AnthropicConversation {
      * @returns {Promise<boolean>} True if user confirms, false otherwise
      */
     private async _finalConfirmation(output: any): Promise<boolean> {
+        this._logger.debug('_finalConfirmation');
+
         const response = await this._sendMessage(
             'Explain your understand of this trading strategy back to me in words, so that I can confirm if you understood it. Do not prefix your response with Q:',
             'user'
@@ -418,6 +452,8 @@ export class AnthropicConversation {
      * @throws {Error} If no valid JSON object is found or parsing fails
      */
     private _parseJsonSafe(jsonString: string): any | null {
+        this._logger.debug('_parseJsonSafe');
+
         try {
             const startBracketIndex = jsonString.indexOf('{');
             const endBracketIndex = jsonString.lastIndexOf('}');
@@ -444,7 +480,10 @@ export class AnthropicConversation {
      * @param {string} assistantMessage - The assistant's question (prefixed with 'Q:')
      * @returns {Promise<boolean>} True if max questions reached, false otherwise
      */
+    //TODO: output of this function is ambiguous
     private async _handleQuestion(assistantMessage: string): Promise<boolean> {
+        this._logger.debug(`_handleQuestion: ${assistantMessage}`);
+
         this._questionCount++;
         if (this._questionCount > this._maxQuestionCount) {
             await this._inputModule.onError(
@@ -457,6 +496,7 @@ export class AnthropicConversation {
         await this._inputModule.onQuestion(
             assistantMessage.substring(2).trim()
         );
+
         return false;
     }
 }

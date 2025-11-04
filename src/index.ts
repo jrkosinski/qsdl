@@ -40,10 +40,9 @@ const inputModule: IUserIO = {
     async onUserExit(): Promise<void> {
         console.log(chalk.yellow('\n👋 Goodbye!\n'));
     },
-    async onQuestion(question: string): Promise<string> {
+    async onQuestion(question: string): Promise<void> {
         console.log(chalk.cyan('Question:'), question);
         console.log(); // Empty line for spacing
-        return question;
     },
     async onStats(stats: string): Promise<void> {
         console.log(chalk.gray(`ℹ️  ${stats}\n`));

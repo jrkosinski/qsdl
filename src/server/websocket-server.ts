@@ -103,9 +103,10 @@ class WebsocketUserIO implements IUserIO {
     }
 
     /** Called when AI asks a question */
-    public async onQuestion(query: string): Promise<string> {
+    public async onQuestion(query: string): Promise<void> {
         //send question to client, wait for response
-        return await this.getUserResponse(query);
+        //return await this.getUserResponse(query);
+        this._sendMessageToClient(MessageType.question, query);
     }
 
     /** Called to display a message to the user */

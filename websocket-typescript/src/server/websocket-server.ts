@@ -133,15 +133,20 @@ class WebsocketUserIO implements IUserIO {
 
     private _sendToClient(data: any): void {
         if (this._ws.readyState === WebSocket.OPEN) {
-            this._logger.debug('Sending: ', data);
+            this._logger.debug('Sending: ' + JSON.stringify(data));
             this._ws.send(JSON.stringify(data));
         }
     }
 }
 
+interface IWCSClient {
+    ws: WebSocket;
+    io: WebsocketUserIO;
+}
+
 export class WebsocketConversationServer {
     private _wss: WebSocketServer | null = null;
-    private _clients: Set<{ ws: WebSocket; io: WebsocketUserIO }> = new Set();
+    private _clients: Set<IWCSClient> = new Set();
     private _config: WebSocketServerConfig;
     private _logger: Logger = new Logger('WSSERV');
 
@@ -171,7 +176,13 @@ export class WebsocketConversationServer {
             const userIO = new WebsocketUserIO(this, ws);
             this._clients.add({ ws, io: userIO });
 
-            new AnthropicConversation(userIO).startConversation();
+            new AnthropicConversation(userIO)
+                .startConversation()
+                .then((output) => {
+                    if (output) {
+                        this._sendToClient(ws, JSON.stringify(output));
+                    }
+                });
         });
 
         this._logger.info(
@@ -188,11 +199,15 @@ export class WebsocketConversationServer {
     public onUserExit(clientId: string) {
         this._clients.forEach((client) => {
             if (client.io.id === clientId) {
-                client.ws.close();
-                this._clients.delete(client);
+                this._endClient(client);
                 return;
             }
         });
+    }
+
+    private _endClient(client: IWCSClient) {
+        client.ws.close();
+        this._clients.delete(client);
     }
 
     private _extractToken(req: IncomingMessage): string | null {
@@ -239,6 +254,7 @@ export class WebsocketConversationServer {
 
     private _sendToClient(ws: WebSocket, data: string | Buffer): void {
         if (ws.readyState === WebSocket.OPEN) {
+            this._logger.debug(`Sending data to client: ${data}`);
             ws.send(data);
         }
     }

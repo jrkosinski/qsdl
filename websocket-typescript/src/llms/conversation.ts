@@ -28,7 +28,7 @@
  * - Extensible input/output module interface for custom UI implementations
  */
 
-import { schema } from '../schema/schema_v0.1.0';
+import { schema } from '../schema/schema_v0.1.1';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import Anthropic from '@anthropic-ai/sdk';
@@ -186,6 +186,7 @@ export class AnthropicConversation {
             }
         }
 
+        this._logger.debug(`returning output ${output}`);
         return output;
     }
 
@@ -196,11 +197,11 @@ export class AnthropicConversation {
      * @todo Move this out to a separate module
      */
     private _validateJson(json: any): boolean {
-        this._logger.debug('_validateJson');
+        this._logger.debug(`_validateJson ${json}`);
         //compile the schema
         const ajv = new Ajv({ allErrors: true, strict: false });
         addFormats(ajv);
-        const validate = ajv.compile(schema);
+        const validate = ajv.compile(schema.schema);
 
         //validate the example QSDL
         return validate(json);
@@ -242,7 +243,9 @@ export class AnthropicConversation {
         message: string,
         role: 'user' | 'assistant'
     ) {
-        this._logger.debug('_addConversationHistory');
+        this._logger.debug(
+            `_addConversationHistory ${{ role, content: message }}`
+        );
         if (CONSOLE_LOGGING_ENABLED) console.log(role, 'says: ', message);
         this._conversationHistory.push({ role, content: message });
     }
@@ -303,7 +306,7 @@ export class AnthropicConversation {
         message: string,
         role: 'user' | 'assistant'
     ): Promise<any> {
-        this._logger.debug('_sendMessage');
+        this._logger.debug(`_sendMessage ${role}, ${message}`);
         this._addConversationHistory(message, role);
         return await this._updateConversation();
     }
@@ -314,7 +317,7 @@ export class AnthropicConversation {
      * @returns {Promise<any>} The assistant's response message
      */
     private async _updateConversation(): Promise<any> {
-        this._logger.debug('_validateJson');
+        this._logger.debug(`_updateConversation`);
 
         //static initial system prompt
         const systemPrompt: any = [
@@ -373,11 +376,13 @@ export class AnthropicConversation {
      * @returns {Promise<any>} The validated JSON object, or null if validation failed after all retries
      */
     private async _handleJsonOutput(assistantMessage: string): Promise<any> {
-        this._logger.debug('_handleJsonOutput');
+        this._logger.debug(`_handleJsonOutput ${assistantMessage}`);
 
         await this._inputModule.onMessage('Processing received json...');
         let json = this._parseJsonSafe(assistantMessage.trim());
         let output: any = null;
+
+        this._logger.debug(`processing json ${json}`);
 
         //here test against the schema
         await this._inputModule.onMessage(
@@ -401,13 +406,24 @@ export class AnthropicConversation {
                     );
 
                     //ask Claude to fix it
+                    this._logger.debug(
+                        `sending request to revalidate to the LLM...`
+                    );
                     const response = await this._sendMessage(
                         'The JSON you provided does not validate against the schema. Please fix it and provide valid JSON.',
                         'user'
                     );
 
+                    this._logger.debug(
+                        `Response for re-validation: ${response}`
+                    );
+
                     // Update assistantMessage for next iteration
                     json = this._parseJsonSafe(response.trim());
+
+                    this._logger.debug(
+                        `JSON resulting from revalidation: ${json}`
+                    );
                 }
             } catch (err) {
                 //let claude know it needs to retry
@@ -441,7 +457,11 @@ export class AnthropicConversation {
             'Is this explanation correct and satisfactory? Type Y or N:'
         );
 
-        return userResponse.toLowerCase() === 'y';
+        this._logger.debug(
+            'USER RESPONSE FOR FINAL CONFIRMATION IS ' + userResponse
+        );
+
+        return userResponse.trim().toLowerCase() === 'y';
     }
 
     /**

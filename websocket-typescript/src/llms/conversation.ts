@@ -94,6 +94,7 @@ export class AnthropicConversation {
     private _inputModule: IUserIO;
     private _mockMode: boolean = false;
     private _logger: Logger = new Logger('ANTHC');
+    private _strategyDescription: string = '';
 
     /**
      * Creates a new AnthropicConversation instance.
@@ -396,6 +397,11 @@ export class AnthropicConversation {
                         '✅ Generated JSON is valid against the schema.'
                     );
                     output = json;
+
+                    //add in the version & description
+                    output.version = schema.version;
+                    output.description = this._strategyDescription;
+
                     break;
                 } else {
                     //TODO: retry schema validation failures
@@ -457,11 +463,12 @@ export class AnthropicConversation {
             'Is this explanation correct and satisfactory? Type Y or N:'
         );
 
-        this._logger.debug(
-            'USER RESPONSE FOR FINAL CONFIRMATION IS ' + userResponse
-        );
+        const confirmed = userResponse.trim().toLowerCase() === 'y';
+        if (confirmed) {
+            this._strategyDescription = response;
+        }
 
-        return userResponse.trim().toLowerCase() === 'y';
+        return confirmed;
     }
 
     /**

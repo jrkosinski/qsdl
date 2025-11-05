@@ -1,70 +1,52 @@
 export const schema = {
-    version: '0.1.0',
+    version: '0.1.1',
     schema: {
         $schema: 'http://json-schema.org/draft-07/schema#',
+        title: 'trading_strategy_schema',
+        description:
+            'Schema for defining trading strategies for forex, stocks, and futures',
         type: 'object',
-        title: 'IStrategy',
-        required: ['data', 'rules', 'actions', 'position_limits'],
-        properties: {
-            data: {
-                type: 'array',
-                minItems: 1,
-                items: {
-                    oneOf: [
-                        {
-                            $ref: '#/definitions/IDataIndicator',
-                        },
-                        {
-                            $ref: '#/definitions/IDataCandle',
-                        },
-                        {
-                            $ref: '#/definitions/IDataVolume',
-                        },
-                        {
-                            $ref: '#/definitions/IDataTime',
-                        },
-                    ],
-                },
-            },
-            rules: {
-                type: 'array',
-                minItems: 1,
-                items: {
-                    $ref: '#/definitions/IRule',
-                },
-            },
-            actions: {
-                type: 'array',
-                minItems: 1,
-                items: {
-                    $ref: '#/definitions/IAction',
-                },
-            },
-            position_limits: {
-                type: 'array',
-                minItems: 1,
-                items: {
-                    $ref: '#/definitions/IPositionLimit',
-                },
-            },
-        },
+        $ref: '#/definitions/i_strategy',
         definitions: {
-            ITimeframe: {
+            i_strategy: {
                 type: 'object',
-                required: ['length', 'period'],
+                required: ['data', 'rules', 'actions', 'position_limits'],
                 properties: {
-                    length: {
-                        type: 'number',
-                        minimum: 1,
-                        default: 1,
+                    data: {
+                        type: 'array',
+                        description: 'must have length of at least one',
+                        minItems: 1,
+                        items: {
+                            $ref: '#/definitions/i_data',
+                        },
                     },
-                    period: {
-                        type: 'string',
-                        enum: ['second', 'minute', 'hour', 'day', 'month'],
+                    rules: {
+                        type: 'array',
+                        description: 'must have length of at least one',
+                        minItems: 1,
+                        items: {
+                            $ref: '#/definitions/i_rule',
+                        },
+                    },
+                    actions: {
+                        type: 'array',
+                        description: 'must have length of at least one',
+                        minItems: 1,
+                        items: {
+                            $ref: '#/definitions/i_action',
+                        },
+                    },
+                    position_limits: {
+                        type: 'array',
+                        description: 'must have at least one',
+                        minItems: 1,
+                        items: {
+                            $ref: '#/definitions/i_position_limit',
+                        },
                     },
                 },
             },
-            IDataBase: {
+            i_data: {
                 type: 'object',
                 required: ['id', 'type', 'timeframe'],
                 properties: {
@@ -76,92 +58,84 @@ export const schema = {
                         enum: ['indicator', 'candle', 'volume', 'time'],
                     },
                     timeframe: {
-                        $ref: '#/definitions/ITimeframe',
+                        $ref: '#/definitions/i_timeframe',
                     },
                     offset: {
                         type: 'number',
                     },
                 },
-            },
-            IDataIndicator: {
                 allOf: [
                     {
-                        $ref: '#/definitions/IDataBase',
+                        if: {
+                            properties: {
+                                type: {
+                                    const: 'indicator',
+                                },
+                            },
+                        },
+                        then: {
+                            $ref: '#/definitions/i_data_indicator',
+                        },
                     },
                     {
-                        type: 'object',
-                        required: ['indicator_type', 'params'],
-                        properties: {
-                            type: {
-                                const: 'indicator',
+                        if: {
+                            properties: {
+                                type: {
+                                    const: 'time',
+                                },
                             },
-                            indicator_type: {
-                                type: 'string',
-                                enum: ['sma', 'ema', 'rsi', 'atr'],
-                            },
-                            params: {
-                                type: 'array',
-                            },
+                        },
+                        then: {
+                            $ref: '#/definitions/i_data_time',
                         },
                     },
                 ],
             },
-            IDataCandle: {
-                allOf: [
-                    {
-                        $ref: '#/definitions/IDataBase',
+            i_timeframe: {
+                type: 'object',
+                required: ['length', 'period'],
+                properties: {
+                    length: {
+                        type: 'number',
+                        description: "default 1, can't be zero",
+                        minimum: 1,
+                        default: 1,
                     },
-                    {
-                        type: 'object',
-                        properties: {
-                            type: {
-                                const: 'candle',
-                            },
-                        },
+                    period: {
+                        type: 'string',
+                        enum: ['second', 'minute', 'hour', 'day', 'month'],
                     },
-                ],
+                },
             },
-            IDataVolume: {
-                allOf: [
-                    {
-                        $ref: '#/definitions/IDataBase',
+            i_data_indicator: {
+                type: 'object',
+                required: ['indicator_type', 'params'],
+                properties: {
+                    indicator_type: {
+                        type: 'string',
+                        enum: ['sma', 'ema', 'rsi', 'atr'],
                     },
-                    {
-                        type: 'object',
-                        properties: {
-                            type: {
-                                const: 'volume',
-                            },
-                        },
+                    params: {
+                        type: 'array',
                     },
-                ],
+                },
             },
-            IDataTime: {
-                allOf: [
-                    {
-                        $ref: '#/definitions/IDataBase',
+            i_data_time: {
+                type: 'object',
+                required: ['second', 'minute', 'hour'],
+                properties: {
+                    second: {
+                        type: 'number',
                     },
-                    {
-                        type: 'object',
-                        required: ['second', 'minute', 'hour'],
-                        properties: {
-                            type: {
-                                const: 'time',
-                            },
-                            second: {
-                                type: 'number',
-                            },
-                            minute: {
-                                type: 'number',
-                            },
-                            hour: {
-                                type: 'number',
-                            },
-                        },
+                    minute: {
+                        type: 'number',
                     },
-                ],
+                    hour: {
+                        type: 'number',
+                    },
+                },
             },
-            IAction: {
+            i_action: {
                 type: 'object',
                 required: ['id', 'order'],
                 properties: {
@@ -169,11 +143,11 @@ export const schema = {
                         type: 'string',
                     },
                     order: {
-                        $ref: '#/definitions/StockOrder',
+                        $ref: '#/definitions/stock_order',
                     },
                 },
             },
-            IPositionLimit: {
+            i_position_limit: {
                 type: 'object',
                 required: ['symbol', 'max', 'min'],
                 properties: {
@@ -188,12 +162,12 @@ export const schema = {
                     },
                 },
             },
-            IRule: {
+            i_rule: {
                 type: 'object',
                 required: ['if', 'then'],
                 properties: {
                     if: {
-                        $ref: '#/definitions/ICondition',
+                        $ref: '#/definitions/i_condition',
                     },
                     then: {
                         type: 'array',
@@ -203,20 +177,22 @@ export const schema = {
                     },
                     else: {
                         type: 'array',
+                        description: 'else is not required',
                         items: {
                             type: 'string',
                         },
                     },
                 },
             },
-            ICondition: {
+            i_condition: {
                 type: 'object',
+                description: "must have only one of 'expression', 'and', 'or'",
                 oneOf: [
                     {
                         required: ['expression'],
                         properties: {
                             expression: {
-                                $ref: '#/definitions/IComparison',
+                                $ref: '#/definitions/i_comparison',
                             },
                         },
                         additionalProperties: false,
@@ -229,10 +205,10 @@ export const schema = {
                                 items: {
                                     oneOf: [
                                         {
-                                            $ref: '#/definitions/ICondition',
+                                            $ref: '#/definitions/i_condition',
                                         },
                                         {
-                                            $ref: '#/definitions/IComparison',
+                                            $ref: '#/definitions/i_comparison',
                                         },
                                     ],
                                 },
@@ -248,10 +224,10 @@ export const schema = {
                                 items: {
                                     oneOf: [
                                         {
-                                            $ref: '#/definitions/ICondition',
+                                            $ref: '#/definitions/i_condition',
                                         },
                                         {
-                                            $ref: '#/definitions/IComparison',
+                                            $ref: '#/definitions/i_comparison',
                                         },
                                     ],
                                 },
@@ -261,37 +237,7 @@ export const schema = {
                     },
                 ],
             },
-            IComparison: {
-                type: 'object',
-                required: ['operandA', 'operandB', 'comparison'],
-                properties: {
-                    operandA: {
-                        oneOf: [
-                            {
-                                type: 'number',
-                            },
-                            {
-                                $ref: '#/definitions/IValueExpression',
-                            },
-                        ],
-                    },
-                    operandB: {
-                        oneOf: [
-                            {
-                                type: 'number',
-                            },
-                            {
-                                $ref: '#/definitions/IValueExpression',
-                            },
-                        ],
-                    },
-                    comparison: {
-                        type: 'string',
-                        enum: ['<', '>', '<=', '>=', '==', '!='],
-                    },
-                },
-            },
-            IValueExpression: {
+            i_value_expression: {
                 type: 'object',
                 required: ['value'],
                 properties: {
@@ -304,78 +250,78 @@ export const schema = {
                                 type: 'string',
                             },
                             {
-                                $ref: '#/definitions/IOperation',
+                                $ref: '#/definitions/i_operation',
                             },
                             {
-                                $ref: '#/definitions/IIndicatorOutput',
+                                $ref: '#/definitions/i_indicator_output',
                             },
                         ],
                     },
                 },
             },
-            IIndicatorOutput: {
+            i_indicator_output: {
                 type: 'object',
                 required: ['indicator_id'],
                 properties: {
                     indicator_id: {
                         type: 'string',
+                        description: 'must be valid indicator id',
                     },
                     output_index: {
                         type: 'number',
+                        description: 'default to 0',
                         default: 0,
                     },
                 },
             },
-            IOperation: {
+            i_comparison: {
                 type: 'object',
+                required: ['operand_a', 'operand_b', 'comparison'],
+                description: 'must have operand_a, operand_b, and comparison',
+                properties: {
+                    operand_a: {
+                        oneOf: [
+                            {
+                                $ref: '#/definitions/i_value_expression',
+                            },
+                            {
+                                type: 'number',
+                            },
+                        ],
+                    },
+                    operand_b: {
+                        oneOf: [
+                            {
+                                $ref: '#/definitions/i_value_expression',
+                            },
+                            {
+                                type: 'number',
+                            },
+                        ],
+                    },
+                    comparison: {
+                        type: 'string',
+                        enum: ['<', '>', '<=', '>=', '==', '!='],
+                    },
+                },
             },
-            StockOrder: {
-                oneOf: [
-                    {
-                        $ref: '#/definitions/IMarketOrder',
+            i_operation: {
+                type: 'object',
+                required: ['operand', 'value_a', 'value_b'],
+                properties: {
+                    operand: {
+                        type: 'string',
+                        enum: ['+', '*', '-', '/', '%'],
                     },
-                    {
-                        $ref: '#/definitions/ILimitOrder',
+                    value_a: {
+                        $ref: '#/definitions/i_value_expression',
                     },
-                    {
-                        $ref: '#/definitions/IStopOrder',
+                    value_b: {
+                        $ref: '#/definitions/i_value_expression',
                     },
-                    {
-                        $ref: '#/definitions/IStopLimitOrder',
-                    },
-                    {
-                        $ref: '#/definitions/ITrailingStopOrder',
-                    },
-                    {
-                        $ref: '#/definitions/ITrailingStopLimitOrder',
-                    },
-                    {
-                        $ref: '#/definitions/IOCOOrder',
-                    },
-                    {
-                        $ref: '#/definitions/IBracketOrder',
-                    },
-                    {
-                        $ref: '#/definitions/IIcebergOrder',
-                    },
-                    {
-                        $ref: '#/definitions/IAllOrNoneOrder',
-                    },
-                    {
-                        $ref: '#/definitions/IFillOrKillOrder',
-                    },
-                    {
-                        $ref: '#/definitions/IImmediateOrCancelOrder',
-                    },
-                    {
-                        $ref: '#/definitions/IGoodTillDateOrder',
-                    },
-                    {
-                        $ref: '#/definitions/IPeggedOrder',
-                    },
-                ],
+                },
             },
-            IBaseOrder: {
+            i_base_order: {
                 type: 'object',
                 required: ['symbol', 'quantity', 'side', 'tif'],
                 properties: {
@@ -384,6 +330,7 @@ export const schema = {
                     },
                     quantity: {
                         type: 'number',
+                        description: 'TODO: change to expression',
                     },
                     side: {
                         type: 'string',
@@ -396,7 +343,7 @@ export const schema = {
                     extended_hours: {
                         type: 'boolean',
                     },
-                    accountId: {
+                    account_id: {
                         type: 'string',
                     },
                     timestamp: {
@@ -405,10 +352,10 @@ export const schema = {
                     },
                 },
             },
-            IMarketOrder: {
+            i_market_order: {
                 allOf: [
                     {
-                        $ref: '#/definitions/IBaseOrder',
+                        $ref: '#/definitions/i_base_order',
                     },
                     {
                         type: 'object',
@@ -421,10 +368,10 @@ export const schema = {
                     },
                 ],
             },
-            ILimitOrder: {
+            i_limit_order: {
                 allOf: [
                     {
-                        $ref: '#/definitions/IBaseOrder',
+                        $ref: '#/definitions/i_base_order',
                     },
                     {
                         type: 'object',
@@ -440,10 +387,11 @@ export const schema = {
                     },
                 ],
             },
-            IStopOrder: {
+            i_stop_order: {
+                description: 'Stop market',
                 allOf: [
                     {
-                        $ref: '#/definitions/IBaseOrder',
+                        $ref: '#/definitions/i_base_order',
                     },
                     {
                         type: 'object',
@@ -459,10 +407,11 @@ export const schema = {
                     },
                 ],
             },
-            IStopLimitOrder: {
+            i_stop_limit_order: {
+                description: 'Stop-limit',
                 allOf: [
                     {
-                        $ref: '#/definitions/IBaseOrder',
+                        $ref: '#/definitions/i_base_order',
                     },
                     {
                         type: 'object',
@@ -481,10 +430,11 @@ export const schema = {
                     },
                 ],
             },
-            ITrailingStopOrder: {
+            i_trailing_stop_order: {
+                description: 'Trailing Stop',
                 allOf: [
                     {
-                        $ref: '#/definitions/IBaseOrder',
+                        $ref: '#/definitions/i_base_order',
                     },
                     {
                         type: 'object',
@@ -495,18 +445,21 @@ export const schema = {
                             },
                             trail_amount: {
                                 type: 'number',
+                                description: 'Dollar amount',
                             },
                             trail_percent: {
                                 type: 'number',
+                                description: 'Percentage',
                             },
                         },
                     },
                 ],
             },
-            ITrailingStopLimitOrder: {
+            i_trailing_stop_limit_order: {
+                description: 'Trailing Stop-limit',
                 allOf: [
                     {
-                        $ref: '#/definitions/IBaseOrder',
+                        $ref: '#/definitions/i_base_order',
                     },
                     {
                         type: 'object',
@@ -523,15 +476,17 @@ export const schema = {
                             },
                             limit_offset: {
                                 type: 'number',
+                                description: 'Offset from stop price for limit',
                             },
                         },
                     },
                 ],
             },
-            IOCOOrder: {
+            i_oco_order: {
+                description: 'OCO',
                 allOf: [
                     {
-                        $ref: '#/definitions/IBaseOrder',
+                        $ref: '#/definitions/i_base_order',
                     },
                     {
                         type: 'object',
@@ -547,13 +502,13 @@ export const schema = {
                                 items: {
                                     oneOf: [
                                         {
-                                            $ref: '#/definitions/ILimitOrder',
+                                            $ref: '#/definitions/i_limit_order',
                                         },
                                         {
-                                            $ref: '#/definitions/IStopOrder',
+                                            $ref: '#/definitions/i_stop_order',
                                         },
                                         {
-                                            $ref: '#/definitions/IStopLimitOrder',
+                                            $ref: '#/definitions/i_stop_limit_order',
                                         },
                                     ],
                                 },
@@ -562,10 +517,11 @@ export const schema = {
                     },
                 ],
             },
-            IBracketOrder: {
+            i_bracket_order: {
+                description: 'Bracket',
                 allOf: [
                     {
-                        $ref: '#/definitions/IBaseOrder',
+                        $ref: '#/definitions/i_base_order',
                     },
                     {
                         type: 'object',
@@ -582,23 +538,23 @@ export const schema = {
                             entry_order: {
                                 oneOf: [
                                     {
-                                        $ref: '#/definitions/IMarketOrder',
+                                        $ref: '#/definitions/i_market_order',
                                     },
                                     {
-                                        $ref: '#/definitions/ILimitOrder',
+                                        $ref: '#/definitions/i_limit_order',
                                     },
                                 ],
                             },
                             profit_target: {
-                                $ref: '#/definitions/ILimitOrder',
+                                $ref: '#/definitions/i_limit_order',
                             },
                             stop_loss: {
                                 oneOf: [
                                     {
-                                        $ref: '#/definitions/IStopOrder',
+                                        $ref: '#/definitions/i_stop_order',
                                     },
                                     {
-                                        $ref: '#/definitions/IStopLimitOrder',
+                                        $ref: '#/definitions/i_stop_limit_order',
                                     },
                                 ],
                             },
@@ -606,10 +562,11 @@ export const schema = {
                     },
                 ],
             },
-            IIcebergOrder: {
+            i_iceberg_order: {
+                description: 'Iceberg',
                 allOf: [
                     {
-                        $ref: '#/definitions/IBaseOrder',
+                        $ref: '#/definitions/i_base_order',
                     },
                     {
                         type: 'object',
@@ -628,18 +585,21 @@ export const schema = {
                             },
                             display_quantity: {
                                 type: 'number',
+                                description: 'Visible quantity',
                             },
                             total_quantity: {
                                 type: 'number',
+                                description: 'Total order size',
                             },
                         },
                     },
                 ],
             },
-            IAllOrNoneOrder: {
+            i_all_or_none_order: {
+                description: 'All or none',
                 allOf: [
                     {
-                        $ref: '#/definitions/IBaseOrder',
+                        $ref: '#/definitions/i_base_order',
                     },
                     {
                         type: 'object',
@@ -655,10 +615,11 @@ export const schema = {
                     },
                 ],
             },
-            IFillOrKillOrder: {
+            i_fill_or_kill_order: {
+                description: 'FOK',
                 allOf: [
                     {
-                        $ref: '#/definitions/IBaseOrder',
+                        $ref: '#/definitions/i_base_order',
                     },
                     {
                         type: 'object',
@@ -674,10 +635,11 @@ export const schema = {
                     },
                 ],
             },
-            IImmediateOrCancelOrder: {
+            i_immediate_or_cancel_order: {
+                description: 'IOC',
                 allOf: [
                     {
-                        $ref: '#/definitions/IBaseOrder',
+                        $ref: '#/definitions/i_base_order',
                     },
                     {
                         type: 'object',
@@ -693,10 +655,11 @@ export const schema = {
                     },
                 ],
             },
-            IGoodTillDateOrder: {
+            i_good_till_date_order: {
+                description: 'GTD',
                 allOf: [
                     {
-                        $ref: '#/definitions/IBaseOrder',
+                        $ref: '#/definitions/i_base_order',
                     },
                     {
                         type: 'object',
@@ -716,10 +679,10 @@ export const schema = {
                     },
                 ],
             },
-            IPeggedOrder: {
+            i_pegged_order: {
                 allOf: [
                     {
-                        $ref: '#/definitions/IBaseOrder',
+                        $ref: '#/definitions/i_base_order',
                     },
                     {
                         type: 'object',
@@ -746,6 +709,58 @@ export const schema = {
                         },
                     },
                 ],
+            },
+            stock_order: {
+                description: 'Union type for all order types',
+                oneOf: [
+                    {
+                        $ref: '#/definitions/i_market_order',
+                    },
+                    {
+                        $ref: '#/definitions/i_limit_order',
+                    },
+                    {
+                        $ref: '#/definitions/i_stop_order',
+                    },
+                    {
+                        $ref: '#/definitions/i_stop_limit_order',
+                    },
+                    {
+                        $ref: '#/definitions/i_trailing_stop_order',
+                    },
+                    {
+                        $ref: '#/definitions/i_trailing_stop_limit_order',
+                    },
+                    {
+                        $ref: '#/definitions/i_oco_order',
+                    },
+                    {
+                        $ref: '#/definitions/i_bracket_order',
+                    },
+                    {
+                        $ref: '#/definitions/i_iceberg_order',
+                    },
+                    {
+                        $ref: '#/definitions/i_all_or_none_order',
+                    },
+                    {
+                        $ref: '#/definitions/i_fill_or_kill_order',
+                    },
+                    {
+                        $ref: '#/definitions/i_immediate_or_cancel_order',
+                    },
+                    {
+                        $ref: '#/definitions/i_good_till_date_order',
+                    },
+                    {
+                        $ref: '#/definitions/i_pegged_order',
+                    },
+                ],
+            },
+            time_in_force: {
+                description: 'Time in Force enum for better type safety',
+                type: 'string',
+                enum: ['DAY', 'GTC', 'IOC', 'FOK', 'GTD', 'EXT'],
             },
         },
     },

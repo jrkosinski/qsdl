@@ -27,7 +27,13 @@ app.get('/health', (req, res) => {
 
 // Start the server
 app.listen(PORT, () => {
-    console.log(`🚀 QSDL Web Client Server running at http://localhost:${PORT}`);
-    console.log(`📄 Open your browser to http://localhost:${PORT} to access the WebSocket client`);
-    console.log(`🔌 Make sure the WebSocket server is running on ws://localhost:1077`);
+    console.log(
+        `🚀 QSDL Web Client Server running at http://localhost:${PORT}`
+    );
+    console.log(
+        `📄 Open your browser to http://localhost:${PORT} to access the WebSocket client`
+    );
+    console.log(
+        `🔌 Make sure the WebSocket server is running on ws://localhost:1077`
+    );
 });

@@ -325,7 +325,7 @@ export class AnthropicConversation {
             {
                 type: 'text',
                 text: this._initialSystemPrompt,
-                cache_control: { type: 'ephemeral' }, // Cache the schema
+                cache_control: { type: 'ephemeral' }, // Cache the initial instructions
             },
             {
                 type: 'text',

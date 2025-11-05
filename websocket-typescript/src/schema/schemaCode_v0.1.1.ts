@@ -15,7 +15,7 @@ The end result of a strategy is a chunk of JSON that has all of the necessary in
  * multiple or single parameters and outputs, or simple candles that give price, volume, timestamp.
  * These data sources can be used in calculations, expressions, triggers, etc.
  */
-interface data_source {
+interface IData {
     id: string;
     type: 'indicator' | 'candle';
     timeframe: ITimeframe;
@@ -45,7 +45,7 @@ interface ITimeframe {
 /**
  * Expresses a specific indicator type and its input parameters.
  */
-interface IDataIndicator extends data_source {
+interface IDataIndicator extends IData {
     indicator_type: 'sma' | 'ema' | 'rsi' | 'atr';
     params: any[];
 }
@@ -53,7 +53,7 @@ interface IDataIndicator extends data_source {
 /**
  * Defines how time works.
  */
-interface IDataTime extends data_source {
+interface IDataTime extends IData {
     second: number;
     minute: number;
     hour: number;
@@ -117,7 +117,7 @@ interface IOperation {
 }
 
 interface IStrategy {
-    data: data_source[]; //must have length of at least one
+    data: IData[]; //must have length of at least one
     rules: IRule[]; //must have length of at least one
     actions: IAction[]; //must have length of at least one
     position_limits: IPositionLimit[]; //must have at least one

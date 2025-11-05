@@ -10,8 +10,16 @@ These are only for trading forex, stocks, and futures; no complex derivatives.
 The end result of a strategy is a chunk of JSON that has all of the necessary information for defining how a specific trading strategy works, with no ambiguity. 
 
 
-//TODO: parameterize symbols, indicator parameters, etc. 
-//TODO: order amounts should be formulae
+//TODO: (MED) parameterize symbols, indicator parameters, etc. 
+//TODO: (EASY) order amounts should be formulae
+//TODO: (MED) indicators library
+//TODO: (HARD) state management 
+//TODO: (HARD) error handling? 
+//TODO: (MED) time constraints 
+//TODO: (MED) way to specify candle relationships
+//TODO: (HARD) selective indicator library 
+//TODO: (EASY) handling of multiple symbols (just verify)
+
 */
 
 /**

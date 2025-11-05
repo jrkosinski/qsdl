@@ -28,7 +28,7 @@
  * - Extensible input/output module interface for custom UI implementations
  */
 
-import { schema } from '../schema/schema_v0.0.2';
+import { schema } from '../schema/schema_v0.1.0';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import Anthropic from '@anthropic-ai/sdk';

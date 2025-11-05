@@ -1,37 +1,87 @@
+/*
+This is an interface definition for IStrategy. IStrategy should be able to represent a wide array and variety of trading strategies. Its main components are: 
+[1] data: these are data indicators (e.g. a moving average or more complex indicator) that can be named and have multiple or single outputs, or simple candles that give price, volume, timestamp. These data sources can be used in calculations, expressions, triggers, etc. 
+[2] actions: these are (currently at least) orders only - orders to place, and how to place them, types of orders, etc. These are used in rules. 
+[3] position_limits: these define how to manage a position (max and min sizes, etc.) 
+[4] rules: this is the real meat of the strategy. These are logical rules that define how to use the data and actions that are defined, to execute a strategy. 
+
+These are only for trading forex, stocks, and futures; no complex derivatives. 
+
+The end result of a strategy is a chunk of JSON that has all of the necessary information for defining how a specific trading strategy works, with no ambiguity. 
+*/
+
+/**
+ * Data sources are data indicators (e.g. a moving average or more complex indicator) that can be named and have
+ * multiple or single parameters and outputs, or simple candles that give price, volume, timestamp.
+ * These data sources can be used in calculations, expressions, triggers, etc.
+ */
 interface IData {
     id: string;
-    type: 'indicator' | 'candle' | 'volume' | 'time';
+    type: 'indicator' | 'candle';
     timeframe: ITimeframe;
     offset?: number;
 }
 
+/**
+ * Defines an OHLCVT candle (OHLC + volume + timestamp).
+ */
+interface ICandleBar {
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+    timestamp: number;
+}
+
+/**
+ * Expresses a timeframe for candles/bars.
+ */
 interface ITimeframe {
     length: number; //default 1, can't be zero
     period: 'second' | 'minute' | 'hour' | 'day' | 'month';
 }
 
+/**
+ * Expresses a specific indicator type and its input parameters.
+ */
 interface IDataIndicator extends IData {
     indicator_type: 'sma' | 'ema' | 'rsi' | 'atr';
     params: any[];
 }
 
+/**
+ * Defines how time works.
+ */
 interface IDataTime extends IData {
     second: number;
     minute: number;
     hour: number;
 }
 
+/**
+ * These are (currently at least) orders only - orders to place, and how to place them, types of orders, etc.
+ * These are used in rules. In the future there might be a 'signal' action - one that gives a signal but doesn't
+ * specify the placing of a specific order.
+ */
 interface IAction {
     id: string;
     order: StockOrder;
 }
 
+/**
+ * Defines max and minimum position sizes.
+ */
 interface IPositionLimit {
     symbol: string;
-    max: number;
-    min: number;
+    max: IValueExpression;
+    min: IValueExpression;
 }
 
+/**
+ * this is the real meat of the strategy. These are logical rules that define how to use the data and actions
+ * that are defined, to execute a strategy.
+ */
 interface IRule {
     if: ICondition;
     then: string[];
@@ -60,7 +110,11 @@ interface IComparison {
     comparison: '<' | '>' | '<=' | '>=' | '==' | '!='; //must have
 }
 
-interface IOperation {}
+interface IOperation {
+    operand: '+' | '*' | '-' | '/' | '%';
+    valueA: IValueExpression;
+    valueB: IValueExpression;
+}
 
 interface IStrategy {
     data: IData[]; //must have length of at least one
@@ -120,8 +174,8 @@ const EXAMPLE_OF_ISTRATEGY: IStrategy = {
     position_limits: [
         {
             symbol: 'ASL',
-            max: 100,
-            min: 0,
+            max: { value: 100 },
+            min: { value: 0 },
         },
     ],
     rules: [
@@ -247,7 +301,7 @@ interface IPeggedOrder extends IBaseOrder {
     offset?: number;
 }
 
-// Union type for all order types
+//Union type for all order types
 type StockOrder =
     | IMarketOrder
     | ILimitOrder
@@ -264,7 +318,7 @@ type StockOrder =
     | IGoodTillDateOrder
     | IPeggedOrder;
 
-// Time in Force enum for better type safety
+//Time in Force enum for better type safety
 enum TimeInForce {
     DAY = 'DAY', // Day order
     GTC = 'GTC', // Good till canceled

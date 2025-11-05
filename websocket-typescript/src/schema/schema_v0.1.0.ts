@@ -4,6 +4,7 @@ export const schema = {
     title: 'IStrategy',
     required: ['data', 'rules', 'actions', 'position_limits'],
     properties: {
+        version: '0.0.1',
         data: {
             type: 'array',
             minItems: 1,

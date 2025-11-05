@@ -6,9 +6,9 @@ export const schema = {
         description:
             'Schema for defining trading strategies for forex, stocks, and futures',
         type: 'object',
-        $ref: '#/definitions/i_strategy',
+        $ref: '#/definitions/strategy',
         definitions: {
-            i_strategy: {
+            strategy: {
                 type: 'object',
                 required: ['data', 'rules', 'actions', 'position_limits'],
                 properties: {
@@ -17,7 +17,7 @@ export const schema = {
                         description: 'must have length of at least one',
                         minItems: 1,
                         items: {
-                            $ref: '#/definitions/i_data',
+                            $ref: '#/definitions/data',
                         },
                     },
                     rules: {
@@ -25,7 +25,7 @@ export const schema = {
                         description: 'must have length of at least one',
                         minItems: 1,
                         items: {
-                            $ref: '#/definitions/i_rule',
+                            $ref: '#/definitions/rule',
                         },
                     },
                     actions: {
@@ -33,7 +33,7 @@ export const schema = {
                         description: 'must have length of at least one',
                         minItems: 1,
                         items: {
-                            $ref: '#/definitions/i_action',
+                            $ref: '#/definitions/action',
                         },
                     },
                     position_limits: {
@@ -41,12 +41,12 @@ export const schema = {
                         description: 'must have at least one',
                         minItems: 1,
                         items: {
-                            $ref: '#/definitions/i_position_limit',
+                            $ref: '#/definitions/position_limit',
                         },
                     },
                 },
             },
-            i_data: {
+            data: {
                 type: 'object',
                 required: ['id', 'type', 'timeframe'],
                 properties: {
@@ -58,7 +58,7 @@ export const schema = {
                         enum: ['indicator', 'candle', 'volume', 'time'],
                     },
                     timeframe: {
-                        $ref: '#/definitions/i_timeframe',
+                        $ref: '#/definitions/timeframe',
                     },
                     offset: {
                         type: 'number',
@@ -74,7 +74,7 @@ export const schema = {
                             },
                         },
                         then: {
-                            $ref: '#/definitions/i_data_indicator',
+                            $ref: '#/definitions/data_indicator',
                         },
                     },
                     {
@@ -86,12 +86,12 @@ export const schema = {
                             },
                         },
                         then: {
-                            $ref: '#/definitions/i_data_time',
+                            $ref: '#/definitions/data_time',
                         },
                     },
                 ],
             },
-            i_timeframe: {
+            timeframe: {
                 type: 'object',
                 required: ['length', 'period'],
                 properties: {
@@ -107,7 +107,7 @@ export const schema = {
                     },
                 },
             },
-            i_data_indicator: {
+            data_indicator: {
                 type: 'object',
                 required: ['indicator_type', 'params'],
                 properties: {
@@ -120,7 +120,7 @@ export const schema = {
                     },
                 },
             },
-            i_data_time: {
+            data_time: {
                 type: 'object',
                 required: ['second', 'minute', 'hour'],
                 properties: {
@@ -135,7 +135,7 @@ export const schema = {
                     },
                 },
             },
-            i_action: {
+            action: {
                 type: 'object',
                 required: ['id', 'order'],
                 properties: {
@@ -147,7 +147,7 @@ export const schema = {
                     },
                 },
             },
-            i_position_limit: {
+            position_limit: {
                 type: 'object',
                 required: ['symbol', 'max', 'min'],
                 properties: {
@@ -162,12 +162,12 @@ export const schema = {
                     },
                 },
             },
-            i_rule: {
+            rule: {
                 type: 'object',
                 required: ['if', 'then'],
                 properties: {
                     if: {
-                        $ref: '#/definitions/i_condition',
+                        $ref: '#/definitions/condition',
                     },
                     then: {
                         type: 'array',
@@ -184,7 +184,7 @@ export const schema = {
                     },
                 },
             },
-            i_condition: {
+            condition: {
                 type: 'object',
                 description: "must have only one of 'expression', 'and', 'or'",
                 oneOf: [
@@ -192,7 +192,7 @@ export const schema = {
                         required: ['expression'],
                         properties: {
                             expression: {
-                                $ref: '#/definitions/i_comparison',
+                                $ref: '#/definitions/comparison',
                             },
                         },
                         additionalProperties: false,
@@ -205,10 +205,10 @@ export const schema = {
                                 items: {
                                     oneOf: [
                                         {
-                                            $ref: '#/definitions/i_condition',
+                                            $ref: '#/definitions/condition',
                                         },
                                         {
-                                            $ref: '#/definitions/i_comparison',
+                                            $ref: '#/definitions/comparison',
                                         },
                                     ],
                                 },
@@ -224,10 +224,10 @@ export const schema = {
                                 items: {
                                     oneOf: [
                                         {
-                                            $ref: '#/definitions/i_condition',
+                                            $ref: '#/definitions/condition',
                                         },
                                         {
-                                            $ref: '#/definitions/i_comparison',
+                                            $ref: '#/definitions/comparison',
                                         },
                                     ],
                                 },
@@ -237,7 +237,7 @@ export const schema = {
                     },
                 ],
             },
-            i_value_expression: {
+            value_expression: {
                 type: 'object',
                 required: ['value'],
                 properties: {
@@ -250,16 +250,16 @@ export const schema = {
                                 type: 'string',
                             },
                             {
-                                $ref: '#/definitions/i_operation',
+                                $ref: '#/definitions/operation',
                             },
                             {
-                                $ref: '#/definitions/i_indicator_output',
+                                $ref: '#/definitions/indicator_output',
                             },
                         ],
                     },
                 },
             },
-            i_indicator_output: {
+            indicator_output: {
                 type: 'object',
                 required: ['indicator_id'],
                 properties: {
@@ -274,7 +274,7 @@ export const schema = {
                     },
                 },
             },
-            i_comparison: {
+            comparison: {
                 type: 'object',
                 required: ['operand_a', 'operand_b', 'comparison'],
                 description: 'must have operand_a, operand_b, and comparison',
@@ -282,7 +282,7 @@ export const schema = {
                     operand_a: {
                         oneOf: [
                             {
-                                $ref: '#/definitions/i_value_expression',
+                                $ref: '#/definitions/value_expression',
                             },
                             {
                                 type: 'number',
@@ -292,7 +292,7 @@ export const schema = {
                     operand_b: {
                         oneOf: [
                             {
-                                $ref: '#/definitions/i_value_expression',
+                                $ref: '#/definitions/value_expression',
                             },
                             {
                                 type: 'number',
@@ -305,7 +305,7 @@ export const schema = {
                     },
                 },
             },
-            i_operation: {
+            operation: {
                 type: 'object',
                 required: ['operand', 'value_a', 'value_b'],
                 properties: {
@@ -314,14 +314,14 @@ export const schema = {
                         enum: ['+', '*', '-', '/', '%'],
                     },
                     value_a: {
-                        $ref: '#/definitions/i_value_expression',
+                        $ref: '#/definitions/value_expression',
                     },
                     value_b: {
-                        $ref: '#/definitions/i_value_expression',
+                        $ref: '#/definitions/value_expression',
                     },
                 },
             },
-            i_base_order: {
+            base_order: {
                 type: 'object',
                 required: ['symbol', 'quantity', 'side', 'tif'],
                 properties: {
@@ -352,10 +352,10 @@ export const schema = {
                     },
                 },
             },
-            i_market_order: {
+            market_order: {
                 allOf: [
                     {
-                        $ref: '#/definitions/i_base_order',
+                        $ref: '#/definitions/base_order',
                     },
                     {
                         type: 'object',
@@ -368,10 +368,10 @@ export const schema = {
                     },
                 ],
             },
-            i_limit_order: {
+            limit_order: {
                 allOf: [
                     {
-                        $ref: '#/definitions/i_base_order',
+                        $ref: '#/definitions/base_order',
                     },
                     {
                         type: 'object',
@@ -387,11 +387,11 @@ export const schema = {
                     },
                 ],
             },
-            i_stop_order: {
+            stop_order: {
                 description: 'Stop market',
                 allOf: [
                     {
-                        $ref: '#/definitions/i_base_order',
+                        $ref: '#/definitions/base_order',
                     },
                     {
                         type: 'object',
@@ -407,11 +407,11 @@ export const schema = {
                     },
                 ],
             },
-            i_stop_limit_order: {
+            stop_limit_order: {
                 description: 'Stop-limit',
                 allOf: [
                     {
-                        $ref: '#/definitions/i_base_order',
+                        $ref: '#/definitions/base_order',
                     },
                     {
                         type: 'object',
@@ -430,11 +430,11 @@ export const schema = {
                     },
                 ],
             },
-            i_trailing_stop_order: {
+            trailing_stop_order: {
                 description: 'Trailing Stop',
                 allOf: [
                     {
-                        $ref: '#/definitions/i_base_order',
+                        $ref: '#/definitions/base_order',
                     },
                     {
                         type: 'object',
@@ -455,11 +455,11 @@ export const schema = {
                     },
                 ],
             },
-            i_trailing_stop_limit_order: {
+            trailing_stop_limit_order: {
                 description: 'Trailing Stop-limit',
                 allOf: [
                     {
-                        $ref: '#/definitions/i_base_order',
+                        $ref: '#/definitions/base_order',
                     },
                     {
                         type: 'object',
@@ -482,11 +482,11 @@ export const schema = {
                     },
                 ],
             },
-            i_oco_order: {
+            oco_order: {
                 description: 'OCO',
                 allOf: [
                     {
-                        $ref: '#/definitions/i_base_order',
+                        $ref: '#/definitions/base_order',
                     },
                     {
                         type: 'object',
@@ -502,13 +502,13 @@ export const schema = {
                                 items: {
                                     oneOf: [
                                         {
-                                            $ref: '#/definitions/i_limit_order',
+                                            $ref: '#/definitions/limit_order',
                                         },
                                         {
-                                            $ref: '#/definitions/i_stop_order',
+                                            $ref: '#/definitions/stop_order',
                                         },
                                         {
-                                            $ref: '#/definitions/i_stop_limit_order',
+                                            $ref: '#/definitions/stop_limit_order',
                                         },
                                     ],
                                 },
@@ -517,11 +517,11 @@ export const schema = {
                     },
                 ],
             },
-            i_bracket_order: {
+            bracket_order: {
                 description: 'Bracket',
                 allOf: [
                     {
-                        $ref: '#/definitions/i_base_order',
+                        $ref: '#/definitions/base_order',
                     },
                     {
                         type: 'object',
@@ -538,23 +538,23 @@ export const schema = {
                             entry_order: {
                                 oneOf: [
                                     {
-                                        $ref: '#/definitions/i_market_order',
+                                        $ref: '#/definitions/market_order',
                                     },
                                     {
-                                        $ref: '#/definitions/i_limit_order',
+                                        $ref: '#/definitions/limit_order',
                                     },
                                 ],
                             },
                             profit_target: {
-                                $ref: '#/definitions/i_limit_order',
+                                $ref: '#/definitions/limit_order',
                             },
                             stop_loss: {
                                 oneOf: [
                                     {
-                                        $ref: '#/definitions/i_stop_order',
+                                        $ref: '#/definitions/stop_order',
                                     },
                                     {
-                                        $ref: '#/definitions/i_stop_limit_order',
+                                        $ref: '#/definitions/stop_limit_order',
                                     },
                                 ],
                             },
@@ -562,11 +562,11 @@ export const schema = {
                     },
                 ],
             },
-            i_iceberg_order: {
+            iceberg_order: {
                 description: 'Iceberg',
                 allOf: [
                     {
-                        $ref: '#/definitions/i_base_order',
+                        $ref: '#/definitions/base_order',
                     },
                     {
                         type: 'object',
@@ -595,11 +595,11 @@ export const schema = {
                     },
                 ],
             },
-            i_all_or_none_order: {
+            all_or_none_order: {
                 description: 'All or none',
                 allOf: [
                     {
-                        $ref: '#/definitions/i_base_order',
+                        $ref: '#/definitions/base_order',
                     },
                     {
                         type: 'object',
@@ -615,11 +615,11 @@ export const schema = {
                     },
                 ],
             },
-            i_fill_or_kill_order: {
+            fill_or_kill_order: {
                 description: 'FOK',
                 allOf: [
                     {
-                        $ref: '#/definitions/i_base_order',
+                        $ref: '#/definitions/base_order',
                     },
                     {
                         type: 'object',
@@ -635,11 +635,11 @@ export const schema = {
                     },
                 ],
             },
-            i_immediate_or_cancel_order: {
+            immediate_or_cancel_order: {
                 description: 'IOC',
                 allOf: [
                     {
-                        $ref: '#/definitions/i_base_order',
+                        $ref: '#/definitions/base_order',
                     },
                     {
                         type: 'object',
@@ -655,11 +655,11 @@ export const schema = {
                     },
                 ],
             },
-            i_good_till_date_order: {
+            good_till_date_order: {
                 description: 'GTD',
                 allOf: [
                     {
-                        $ref: '#/definitions/i_base_order',
+                        $ref: '#/definitions/base_order',
                     },
                     {
                         type: 'object',
@@ -679,10 +679,10 @@ export const schema = {
                     },
                 ],
             },
-            i_pegged_order: {
+            pegged_order: {
                 allOf: [
                     {
-                        $ref: '#/definitions/i_base_order',
+                        $ref: '#/definitions/base_order',
                     },
                     {
                         type: 'object',
@@ -714,46 +714,46 @@ export const schema = {
                 description: 'Union type for all order types',
                 oneOf: [
                     {
-                        $ref: '#/definitions/i_market_order',
+                        $ref: '#/definitions/market_order',
                     },
                     {
-                        $ref: '#/definitions/i_limit_order',
+                        $ref: '#/definitions/limit_order',
                     },
                     {
-                        $ref: '#/definitions/i_stop_order',
+                        $ref: '#/definitions/stop_order',
                     },
                     {
-                        $ref: '#/definitions/i_stop_limit_order',
+                        $ref: '#/definitions/stop_limit_order',
                     },
                     {
-                        $ref: '#/definitions/i_trailing_stop_order',
+                        $ref: '#/definitions/trailing_stop_order',
                     },
                     {
-                        $ref: '#/definitions/i_trailing_stop_limit_order',
+                        $ref: '#/definitions/trailing_stop_limit_order',
                     },
                     {
-                        $ref: '#/definitions/i_oco_order',
+                        $ref: '#/definitions/oco_order',
                     },
                     {
-                        $ref: '#/definitions/i_bracket_order',
+                        $ref: '#/definitions/bracket_order',
                     },
                     {
-                        $ref: '#/definitions/i_iceberg_order',
+                        $ref: '#/definitions/iceberg_order',
                     },
                     {
-                        $ref: '#/definitions/i_all_or_none_order',
+                        $ref: '#/definitions/all_or_none_order',
                     },
                     {
-                        $ref: '#/definitions/i_fill_or_kill_order',
+                        $ref: '#/definitions/fill_or_kill_order',
                     },
                     {
-                        $ref: '#/definitions/i_immediate_or_cancel_order',
+                        $ref: '#/definitions/immediate_or_cancel_order',
                     },
                     {
-                        $ref: '#/definitions/i_good_till_date_order',
+                        $ref: '#/definitions/good_till_date_order',
                     },
                     {
-                        $ref: '#/definitions/i_pegged_order',
+                        $ref: '#/definitions/pegged_order',
                     },
                 ],
             },

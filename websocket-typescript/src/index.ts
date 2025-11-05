@@ -175,7 +175,7 @@ async function main() {
         }
     });
 
-    await client.connect();
+    //await client.connect();
 
     /*
     multiTurnConversationTestTest().then((r) => {

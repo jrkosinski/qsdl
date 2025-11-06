@@ -103,16 +103,16 @@
             }
         </style>
     </head>
-    <body>
+    <body onLoad="start()">
         <div class="container">
             <h1>WebSocket Client</h1>
 
             <div id="status" class="status disconnected">Disconnected</div>
 
             <div class="controls">
-                <button id="connectBtn" class="connect-btn">Connect</button>
-                <button id="disconnectBtn" class="disconnect-btn" disabled>
-                    Disconnect
+                <button id="startBtn" class="connect-btn">Start</button>
+                <button id="resetBtn" class="disconnect-btn" disabled>
+                    Reset
                 </button>
             </div>
 
@@ -135,8 +135,8 @@
             let ws = null;
 
             const statusDiv = document.getElementById('status');
-            const connectBtn = document.getElementById('connectBtn');
-            const disconnectBtn = document.getElementById('disconnectBtn');
+            const startBtn = document.getElementById('startBtn');
+            const resetBtn = document.getElementById('resetBtn');
             const messageInput = document.getElementById('messageInput');
             const sendBtn = document.getElementById('sendBtn');
             const promptDiv = document.getElementById('messagePrompt');
@@ -184,7 +184,7 @@
                 statusDiv.className = `status ${className}`;
             }
 
-            function connect() {
+            function start() {
                 try {
                     updateStatus('Connecting...', 'connecting');
                     addMessage('Connecting to ' + WS_URL, 'system');
@@ -194,8 +194,8 @@
                     ws.onopen = () => {
                         updateStatus('Connected', 'connected');
                         addMessage('Connected to server', 'system');
-                        connectBtn.disabled = true;
-                        disconnectBtn.disabled = false;
+                        startBtn.disabled = true;
+                        resetBtn.disabled = false;
                         messageInput.disabled = false;
                         sendBtn.disabled = false;
                     };
@@ -217,8 +217,8 @@
                             })`,
                             'system'
                         );
-                        connectBtn.disabled = false;
-                        disconnectBtn.disabled = true;
+                        startBtn.disabled = false;
+                        resetBtn.disabled = true;
                         messageInput.disabled = true;
                         sendBtn.disabled = true;
                     };
@@ -229,9 +229,10 @@
                 }
             }
 
-            function disconnect() {
+            function reset() {
                 if (ws) {
                     ws.close();
+                    start();
                 }
             }
 
@@ -244,8 +245,8 @@
                 }
             }
 
-            connectBtn.addEventListener('click', connect);
-            disconnectBtn.addEventListener('click', disconnect);
+            startBtn.addEventListener('click', start);
+            resetBtn.addEventListener('click', reset);
             sendBtn.addEventListener('click', sendMessage);
             messageInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {

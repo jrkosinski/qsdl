@@ -7,13 +7,18 @@ import {
     PythonCodeGenerator,
     JavaScriptCodeGenerator,
 } from './code-generators';
-import { strategy, data_indicator, data_candle } from './schema';
+import {
+    strategy,
+    data_indicator,
+    data_candle,
+} from '../schema/schemaCode_v0.1.3';
+import * as fs from 'fs';
 
 // ============================================================================
-// Example Strategy JSON
+//example Strategy JSON
 // ============================================================================
 
-const exampleStrategy: strategy = {
+export const exampleCodeGenStrategy: strategy = {
     name: 'MACD SMA Crossover',
     description:
         'Buy when MACD crosses bullish and 50 SMA is above 100 SMA, with volume confirmation',
@@ -37,7 +42,7 @@ const exampleStrategy: strategy = {
             indicator_type: 'macd',
             symbol: { var: '$SYM' },
             timeframe: { period: 'hour', length: 1 },
-            offset: 1, // Previous bar
+            offset: 1, //previous bar
             params: {
                 fast_period: 12,
                 slow_period: 26,
@@ -117,7 +122,7 @@ const exampleStrategy: strategy = {
     ],
     rules: [
         {
-            // Buy Rule: MACD crosses bullish AND 50 SMA > 100 SMA AND volume > 50% of average
+            //buy Rule: MACD crosses bullish AND 50 SMA > 100 SMA AND volume > 50% of average
             if: {
                 and: [
                     {
@@ -129,7 +134,7 @@ const exampleStrategy: strategy = {
                         },
                     },
                     {
-                        // MACD histogram crosses above zero (current > 0)
+                        //MACD histogram crosses above zero (current > 0)
                         expression: {
                             operator: '>',
                             operandA: {
@@ -140,7 +145,7 @@ const exampleStrategy: strategy = {
                         },
                     },
                     {
-                        // MACD histogram was below zero (previous <= 0)
+                        //MACD histogram was below zero (previous <= 0)
                         expression: {
                             operator: '<=',
                             operandA: {
@@ -151,7 +156,7 @@ const exampleStrategy: strategy = {
                         },
                     },
                     {
-                        // Volume confirmation: current volume > 50% of average
+                        //volume confirmation: current volume > 50% of average
                         expression: {
                             operator: '>',
                             operandA: {
@@ -170,7 +175,7 @@ const exampleStrategy: strategy = {
             then: ['buy'],
         },
         {
-            // Sell Rule: 50 SMA crosses below 100 SMA (exit when precondition goes negative)
+            //sell Rule: 50 SMA crosses below 100 SMA (exit when precondition goes negative)
             if: {
                 expression: {
                     operator: '<',
@@ -191,24 +196,24 @@ const exampleStrategy: strategy = {
 };
 
 // ============================================================================
-// Main Example: Parse, Validate, and Generate Code
+//Main Example: Parse, Validate, and Generate Code
 // ============================================================================
 
-function runExample() {
+export function runCodeGenExample() {
     console.log('='.repeat(80));
     console.log('STRATEGY JSON TO AST TO CODE - COMPLETE EXAMPLE');
     console.log('='.repeat(80));
     console.log();
 
-    // Step 1: Create parser with indicator registry
+    //step 1: Create parser with indicator registry
     console.log('Step 1: Creating parser with indicator registry...');
     const parser = createStrategyParser();
     console.log('✓ Parser created');
     console.log();
 
-    // Step 2: Parse JSON to AST
+    //step 2: Parse JSON to AST
     console.log('Step 2: Parsing strategy JSON to AST...');
-    const { ast, validation } = parser.parseAndValidate(exampleStrategy);
+    const { ast, validation } = parser.parseAndValidate(exampleCodeGenStrategy);
 
     if (validation.valid) {
         console.log('✓ Strategy parsed successfully');
@@ -233,14 +238,14 @@ function runExample() {
     }
     console.log();
 
-    // Step 3: Display AST structure
+    //step 3: Display AST structure
     console.log('Step 3: AST Structure:');
     console.log('```');
     displayASTStructure(ast);
     console.log('```');
     console.log();
 
-    // Step 4: Generate Python code
+    //step 4: Generate Python code
     console.log('Step 4: Generating Python code...');
     const pythonGenerator = new PythonCodeGenerator();
     const pythonCode = pythonGenerator.generate(ast);
@@ -257,7 +262,7 @@ function runExample() {
     console.log('='.repeat(40));
     console.log();
 
-    // Step 5: Generate JavaScript code
+    //step 5: Generate JavaScript code
     console.log('Step 5: Generating JavaScript code...');
     const jsGenerator = new JavaScriptCodeGenerator();
     const jsCode = jsGenerator.generate(ast);
@@ -274,7 +279,7 @@ function runExample() {
     console.log('='.repeat(40));
     console.log();
 
-    // Step 6: Save generated code to files
+    //step 6: Save generated code to files
     console.log('Step 6: Saving generated code...');
     saveGeneratedCode(pythonCode, jsCode, ast.name || 'strategy');
     console.log();
@@ -285,7 +290,7 @@ function runExample() {
 }
 
 // ============================================================================
-// Helper Functions
+//helper Functions
 // ============================================================================
 
 function displayASTStructure(ast: any, indent: number = 0): void {
@@ -346,24 +351,18 @@ function saveGeneratedCode(
     jsCode: string,
     strategyName: string
 ): void {
-    // In a real implementation, you would save these to files
-    console.log(`Would save Python code to: ${strategyName}_strategy.py`);
-    console.log(`Would save JavaScript code to: ${strategyName}_strategy.js`);
+    console.log(`save Python code to: ${strategyName}_strategy.py`);
+    console.log(`save JavaScript code to: ${strategyName}_strategy.js`);
 
-    // Example of how to save (requires 'fs' module in Node.js):
-    /*
-    import * as fs from 'fs';
-    
     fs.writeFileSync(`${strategyName}_strategy.py`, pythonCode, 'utf-8');
     fs.writeFileSync(`${strategyName}_strategy.js`, jsCode, 'utf-8');
-    */
 }
 
 // ============================================================================
-// Advanced Example: Strategy with Complex Conditions
+//advanced Example: Strategy with Complex Conditions
 // ============================================================================
 
-const advancedStrategy: strategy = {
+export const advancedStrategyExample: strategy = {
     name: 'Bollinger Band Mean Reversion',
     description: 'Trade bounces off Bollinger Bands with RSI confirmation',
     data: [
@@ -412,7 +411,7 @@ const advancedStrategy: strategy = {
                 limit_price: {
                     operator: '*',
                     operandA: { candle_id: 'current', field: 'close' },
-                    operandB: 0.998, // Slightly below current price
+                    operandB: 0.998, //slightly below current price
                 },
                 tif: 'day',
             },
@@ -431,7 +430,7 @@ const advancedStrategy: strategy = {
                 limit_price: {
                     operator: '*',
                     operandA: { candle_id: 'current', field: 'close' },
-                    operandB: 1.002, // Slightly above current price
+                    operandB: 1.002, //slightly above current price
                 },
                 tif: 'day',
             },
@@ -439,7 +438,7 @@ const advancedStrategy: strategy = {
     ],
     rules: [
         {
-            // Buy when price touches lower band and RSI < 30
+            //buy when price touches lower band and RSI < 30
             if: {
                 and: [
                     {
@@ -461,7 +460,7 @@ const advancedStrategy: strategy = {
             then: ['buy_oversold'],
         },
         {
-            // Sell when price touches upper band and RSI > 70
+            //sell when price touches upper band and RSI > 70
             if: {
                 and: [
                     {
@@ -488,7 +487,7 @@ const advancedStrategy: strategy = {
             symbol: 'SPY',
             max: {
                 operator: 'pct',
-                operandA: 30, // Max 30% of portfolio
+                operandA: 30, //Max 30% of portfolio
                 operandB: { var: '$PORTFOLIO_VALUE' },
             },
             min: 0,
@@ -497,38 +496,38 @@ const advancedStrategy: strategy = {
 };
 
 // ============================================================================
-// Test Suite
+//test Suite
 // ============================================================================
 
-function runTests() {
+export function runCodeGenTests() {
     console.log('\n' + '='.repeat(80));
     console.log('RUNNING TESTS');
     console.log('='.repeat(80) + '\n');
 
     const parser = createStrategyParser();
 
-    // Test 1: Basic strategy parsing
+    //test 1: Basic strategy parsing
     console.log('Test 1: Basic strategy parsing');
     try {
-        const result = parser.parseAndValidate(exampleStrategy);
+        const result = parser.parseAndValidate(exampleCodeGenStrategy);
         console.log(`  ✓ Parsed successfully: ${result.validation.valid}`);
     } catch (error) {
         console.log(`  ✗ Failed: ${error}`);
     }
 
-    // Test 2: Advanced strategy parsing
+    //test 2: Advanced strategy parsing
     console.log('Test 2: Advanced strategy parsing');
     try {
-        const result = parser.parseAndValidate(advancedStrategy);
+        const result = parser.parseAndValidate(advancedStrategyExample);
         console.log(`  ✓ Parsed successfully: ${result.validation.valid}`);
     } catch (error) {
         console.log(`  ✗ Failed: ${error}`);
     }
 
-    // Test 3: Code generation
+    //test 3: Code generation
     console.log('Test 3: Code generation');
     try {
-        const { ast } = parser.parseAndValidate(exampleStrategy);
+        const { ast } = parser.parseAndValidate(exampleCodeGenStrategy);
         const pythonGen = new PythonCodeGenerator();
         const jsGen = new JavaScriptCodeGenerator();
 
@@ -547,14 +546,3 @@ function runTests() {
 
     console.log('\nAll tests completed!');
 }
-
-// ============================================================================
-// Run the example
-// ============================================================================
-
-if (require.main === module) {
-    runExample();
-    runTests();
-}
-
-export { exampleStrategy, advancedStrategy, runExample, runTests };

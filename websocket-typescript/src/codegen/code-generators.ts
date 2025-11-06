@@ -44,7 +44,7 @@ export abstract class CodeGenerator<T> implements ASTVisitor<T> {
 
     abstract generate(ast: StrategyNode): string;
 
-    // Abstract visitor methods
+    //abstract visitor methods
     abstract visitStrategy(node: StrategyNode): T;
     abstract visitIndicator(node: IndicatorNode): T;
     abstract visitCandle(node: CandleNode): T;
@@ -74,10 +74,10 @@ export class PythonCodeGenerator extends CodeGenerator<string> {
         this.code = [];
         this.indent = 0;
 
-        // Generate header
+        //generate header
         this.generateHeader();
 
-        // Visit strategy node
+        //visit strategy node
         ast.accept(this);
 
         return this.code.join('\n');
@@ -112,25 +112,25 @@ export class PythonCodeGenerator extends CodeGenerator<string> {
         this.code.push('class ' + this.getStrategyClassName(node) + ':');
         this.increaseIndent();
 
-        // Generate docstring
+        //generate docstring
         if (node.description) {
             this.code.push(this.getIndent() + '"""' + node.description + '"""');
             this.code.push('');
         }
 
-        // Generate __init__ method
+        //generate __init__ method
         this.generateInitMethod(node);
 
-        // Generate indicator calculation methods
+        //generate indicator calculation methods
         this.generateIndicatorMethods(node);
 
-        // Generate rule evaluation method
+        //generate rule evaluation method
         this.generateRuleEvaluationMethod(node);
 
-        // Generate order execution methods
+        //generate order execution methods
         this.generateOrderMethods(node);
 
-        // Generate main execution method
+        //generate main execution method
         this.generateExecuteMethod(node);
 
         this.decreaseIndent();
@@ -155,7 +155,7 @@ export class PythonCodeGenerator extends CodeGenerator<string> {
         this.code.push(this.getIndent() + 'self.positions = {}');
         this.code.push(this.getIndent() + 'self.indicator_cache = {}');
 
-        // Initialize position limits
+        //initialize position limits
         this.code.push(this.getIndent() + 'self.position_limits = {');
         this.increaseIndent();
         for (const limit of node.positionLimits) {
@@ -192,7 +192,7 @@ export class PythonCodeGenerator extends CodeGenerator<string> {
             );
             this.increaseIndent();
 
-            // Generate indicator calculation based on type
+            //generate indicator calculation based on type
             switch (indicator.indicatorType) {
                 case 'sma':
                     const period = indicator.params.get('period') || 20;
@@ -363,7 +363,7 @@ export class PythonCodeGenerator extends CodeGenerator<string> {
         this.decreaseIndent();
     }
 
-    // Visitor implementations for other nodes
+    //visitor implementations for other nodes
     visitIndicator(node: IndicatorNode): string {
         return `self.indicator_cache.get('${node.id}')`;
     }
@@ -412,11 +412,11 @@ export class PythonCodeGenerator extends CodeGenerator<string> {
     }
 
     visitRule(node: RuleNode): string {
-        return ''; // Handled in generateRuleEvaluationMethod
+        return ''; //handled in generateRuleEvaluationMethod
     }
 
     visitPositionLimit(node: PositionLimitNode): string {
-        return ''; // Handled in generateInitMethod
+        return ''; //handled in generateInitMethod
     }
 
     visitComparison(node: ComparisonNode): string {
@@ -433,7 +433,7 @@ export class PythonCodeGenerator extends CodeGenerator<string> {
     }
 
     visitCrossover(node: CrossoverNode): string {
-        // For Python, we need to check previous values
+        //for Python, we need to check previous values
         const series1 = node.series1.accept(this);
         const series2 = node.series2.accept(this);
 
@@ -500,10 +500,10 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
         this.code = [];
         this.indent = 0;
 
-        // Generate header
+        //generate header
         this.generateHeader();
 
-        // Visit strategy node
+        //visit strategy node
         ast.accept(this);
 
         return this.code.join('\n');
@@ -525,19 +525,19 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
         this.code.push(`class ${className} {`);
         this.increaseIndent();
 
-        // Constructor
+        //constructor
         this.generateConstructor(node);
 
-        // Indicator calculation methods
+        //indicator calculation methods
         this.generateIndicatorMethodsJS(node);
 
-        // Rule evaluation
+        //rule evaluation
         this.generateRuleEvaluationJS(node);
 
-        // Order execution
+        //order execution
         this.generateOrderMethodsJS(node);
 
-        // Main execution method
+        //Main execution method
         this.generateExecuteMethodJS(node);
 
         this.decreaseIndent();
@@ -565,7 +565,7 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
         this.code.push(this.getIndent() + 'this.positions = {};');
         this.code.push(this.getIndent() + 'this.indicatorCache = {};');
 
-        // Position limits
+        //position limits
         this.code.push(this.getIndent() + 'this.positionLimits = {');
         this.increaseIndent();
         for (const limit of node.positionLimits) {
@@ -600,7 +600,7 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
             );
             this.increaseIndent();
 
-            // Generate based on indicator type
+            //generate based on indicator type
             switch (indicator.indicatorType) {
                 case 'sma':
                     const period = indicator.params.get('period') || 20;
@@ -633,7 +633,7 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
                 default:
                     this.code.push(
                         this.getIndent() +
-                            '// TODO: Implement ' +
+                            '//tODO: Implement ' +
                             indicator.indicatorType
                     );
                     this.code.push(
@@ -655,7 +655,7 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
 
         for (let i = 0; i < node.rules.length; i++) {
             const rule = node.rules[i];
-            this.code.push(this.getIndent() + '// Rule ' + (i + 1));
+            this.code.push(this.getIndent() + '//rule ' + (i + 1));
             this.code.push(
                 this.getIndent() + 'if (' + rule.condition.accept(this) + ') {'
             );
@@ -719,8 +719,8 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
         this.code.push(this.getIndent() + 'async execute(marketData) {');
         this.increaseIndent();
 
-        // Calculate indicators
-        this.code.push(this.getIndent() + '// Calculate indicators');
+        //calculate indicators
+        this.code.push(this.getIndent() + '//calculate indicators');
         const indicators = node.dataSources.filter(
             (ds: any) => ds instanceof IndicatorNode
         ) as IndicatorNode[];
@@ -732,7 +732,7 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
         }
 
         this.code.push('');
-        this.code.push(this.getIndent() + '// Build execution context');
+        this.code.push(this.getIndent() + '//build execution context');
         this.code.push(this.getIndent() + 'const context = {');
         this.increaseIndent();
         this.code.push(
@@ -745,13 +745,13 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
         this.code.push(this.getIndent() + '};');
 
         this.code.push('');
-        this.code.push(this.getIndent() + '// Evaluate rules');
+        this.code.push(this.getIndent() + '//evaluate rules');
         this.code.push(
             this.getIndent() + 'const actions = this.evaluateRules(context);'
         );
 
         this.code.push('');
-        this.code.push(this.getIndent() + '// Execute actions');
+        this.code.push(this.getIndent() + '//execute actions');
         this.code.push(this.getIndent() + 'for (const actionId of actions) {');
         this.increaseIndent();
         this.code.push(
@@ -764,7 +764,7 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
         this.code.push(this.getIndent() + '}');
     }
 
-    // Visitor implementations
+    //visitor implementations
     visitIndicator(node: IndicatorNode): string {
         return `this.indicatorCache['${node.id}']`;
     }
@@ -813,11 +813,11 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
     }
 
     visitRule(node: RuleNode): string {
-        return ''; // Handled elsewhere
+        return ''; //handled elsewhere
     }
 
     visitPositionLimit(node: PositionLimitNode): string {
-        return ''; // Handled elsewhere
+        return ''; //handled elsewhere
     }
 
     visitComparison(node: ComparisonNode): string {
@@ -837,7 +837,7 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
         const series1 = node.series1.accept(this);
         const series2 = node.series2.accept(this);
 
-        // Simplified for JavaScript - would need historical data tracking
+        //simplified for JavaScript - would need historical data tracking
         if (node.direction === 'above') {
             return `(${series1} > ${series2})`;
         } else {

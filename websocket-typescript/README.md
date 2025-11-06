@@ -8,13 +8,13 @@ This application provides a conversational interface for defining trading strate
 
 ## Features
 
-- **Multi-turn Conversations**: Interactive dialogue with the LLM to refine strategy definitions
-- **Dual LLM Support**: Integration with both OpenAI and Anthropic APIs
-- **WebSocket Server/Client**: Real-time bidirectional communication layer
-- **Schema Validation**: Automatic validation using AJV (JSON Schema validator)
-- **Multiple Schema Versions**: Support for schema versions v0.0.1 through v0.1.2
-- **Colored CLI Output**: Enhanced user experience with chalk-colored console messages
-- **JSON Export**: Save generated strategies to files
+-   **Multi-turn Conversations**: Interactive dialogue with the LLM to refine strategy definitions
+-   **Dual LLM Support**: Integration with both OpenAI and Anthropic APIs
+-   **WebSocket Server/Client**: Real-time bidirectional communication layer
+-   **Schema Validation**: Automatic validation using AJV (JSON Schema validator)
+-   **Multiple Schema Versions**: Support for schema versions v0.0.1 through v0.1.2
+-   **Colored CLI Output**: Enhanced user experience with chalk-colored console messages
+-   **JSON Export**: Save generated strategies to files
 
 ## Project Structure
 
@@ -43,10 +43,10 @@ src/
 
 ## Prerequisites
 
-- Node.js v16 or higher
-- Yarn or npm package manager
-- OpenAI API key (optional)
-- Anthropic API key (optional)
+-   Node.js v16 or higher
+-   Yarn or npm package manager
+-   OpenAI API key (optional)
+-   Anthropic API key (optional)
 
 At least one API key is required to use the LLM features.
 
@@ -85,6 +85,7 @@ npm run dev
 ```
 
 This will:
+
 1. Start the WebSocket server on port 1077
 2. Initialize the WebSocket client
 3. Begin the interactive CLI conversation
@@ -139,11 +140,11 @@ Answer: SPY
 ### LLM APIs
 
 ```typescript
-// OpenAI integration
+//openAI integration
 const openai = new OpenAILLMApi(apiKey);
 const response = await openai.query(prompt);
 
-// Anthropic integration
+//anthropic integration
 const anthropic = new AnthropicLLMApi(apiKey);
 const response = await anthropic.query(prompt);
 ```
@@ -172,7 +173,7 @@ const client = new WebsocketClient({
 });
 
 client.onMessage(async (data) => {
-    // Handle incoming messages
+    //handle incoming messages
 });
 
 await client.connect();
@@ -182,10 +183,10 @@ await client.connect();
 
 The project maintains multiple schema versions for backward compatibility:
 
-- **v0.0.x**: Initial schema iterations with basic structure
-- **v0.1.0**: Major update with indicator registry system
-- **v0.1.1**: Enhanced type definitions and validation rules
-- **v0.1.2**: Current stable version with comprehensive indicator support
+-   **v0.0.x**: Initial schema iterations with basic structure
+-   **v0.1.0**: Major update with indicator registry system
+-   **v0.1.1**: Enhanced type definitions and validation rules
+-   **v0.1.2**: Current stable version with comprehensive indicator support
 
 See the `src/schema/` directory for version-specific schemas. The latest schema is actively used by default.
 
@@ -213,11 +214,11 @@ Uncomment the desired test in `index.ts` main function.
 
 The WebSocket protocol supports the following message types:
 
-- **`message`**: General informational messages
-- **`prompt`**: User input requests
-- **`question`**: LLM questions to the user
-- **`stats`**: Usage statistics (tokens, cost, etc.)
-- **`error`**: Error messages
+-   **`message`**: General informational messages
+-   **`prompt`**: User input requests
+-   **`question`**: LLM questions to the user
+-   **`stats`**: Usage statistics (tokens, cost, etc.)
+-   **`error`**: Error messages
 
 ## Output Format
 
@@ -237,58 +238,64 @@ Generated strategies are saved as JSON files conforming to the QSDL schema:
 ## Dependencies
 
 ### Core Dependencies
-- `ws` - WebSocket implementation
-- `@anthropic-ai/sdk` - Anthropic API client
-- `openai` - OpenAI API client
-- `ajv` - JSON schema validator
-- `ajv-formats` - Additional format validation
+
+-   `ws` - WebSocket implementation
+-   `@anthropic-ai/sdk` - Anthropic API client
+-   `openai` - OpenAI API client
+-   `ajv` - JSON schema validator
+-   `ajv-formats` - Additional format validation
 
 ### CLI & UX
-- `chalk` - Colored console output
-- `prompts` - Interactive CLI prompts
-- `dotenv` - Environment variable management
+
+-   `chalk` - Colored console output
+-   `prompts` - Interactive CLI prompts
+-   `dotenv` - Environment variable management
 
 ### Development
-- `typescript` - TypeScript compiler
-- `ts-node` - TypeScript execution
-- `ts-node-dev` - Development server with hot reload
+
+-   `typescript` - TypeScript compiler
+-   `ts-node` - TypeScript execution
+-   `ts-node-dev` - Development server with hot reload
 
 ## Troubleshooting
 
 ### Connection Issues
 
 If the WebSocket connection fails:
-- Ensure port 1077 is available
-- Check firewall settings
-- Verify the server is running
+
+-   Ensure port 1077 is available
+-   Check firewall settings
+-   Verify the server is running
 
 ### API Errors
 
 If you encounter LLM API errors:
-- Verify your API keys are valid
-- Check your API rate limits
-- Ensure you have sufficient credits
+
+-   Verify your API keys are valid
+-   Check your API rate limits
+-   Ensure you have sufficient credits
 
 ### Validation Errors
 
 If schema validation fails:
-- Check the generated JSON structure
-- Verify all required fields are present
-- Ensure data types match the schema
+
+-   Check the generated JSON structure
+-   Verify all required fields are present
+-   Ensure data types match the schema
 
 ## Future Enhancements
 
-- [ ] WebSocket authentication improvements
-- [ ] Enhanced logging system
-- [ ] Additional schema improvements
-- [ ] Support for more LLM providers
-- [ ] Strategy testing/backtesting integration
-- [ ] Web UI for strategy creation
+-   [ ] WebSocket authentication improvements
+-   [ ] Enhanced logging system
+-   [ ] Additional schema improvements
+-   [ ] Support for more LLM providers
+-   [ ] Strategy testing/backtesting integration
+-   [ ] Web UI for strategy creation
 
 ## Related Projects
 
-- **qsdl/**: Latest QSDL schema and TypeScript interfaces
-- **codegen-python/**: Experimental code generation from QSDL
+-   **qsdl/**: Latest QSDL schema and TypeScript interfaces
+-   **codegen-python/**: Experimental code generation from QSDL
 
 ## License
 

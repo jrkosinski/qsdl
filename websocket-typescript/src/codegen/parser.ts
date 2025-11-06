@@ -3,7 +3,7 @@
  */
 
 import {
-    // AST Nodes
+    //aST Nodes
     StrategyNode,
     DataSourceNode,
     IndicatorNode,
@@ -16,7 +16,7 @@ import {
     RuleNode,
     PositionLimitNode,
 
-    // Expression Nodes
+    //expression Nodes
     ExpressionNode,
     LiteralNumberNode,
     VariableNode,
@@ -24,20 +24,20 @@ import {
     IndicatorOutputRefNode,
     CandleFieldRefNode,
 
-    // Condition Nodes
+    //condition Nodes
     ConditionNode,
     ComparisonNode,
     LogicalOperationNode,
     CrossoverNode,
 
-    // Context
+    //context
     ValidationContext,
     ValidationResult,
     ValidationError,
     ValidationWarning,
 } from './ast-node';
 
-// Import the original interface definitions
+//import the original interface definitions
 import type {
     strategy,
     data_source,
@@ -60,8 +60,8 @@ import type {
     stock_order,
     market_order,
     limit_order,
-    // Add other order types as needed
-} from './schema';
+    //add other order types as needed
+} from '../schema/schemaCode_v0.1.3';
 
 export class StrategyParser {
     private indicatorRegistry: Map<string, any>;
@@ -82,7 +82,7 @@ export class StrategyParser {
      * Parse a JSON strategy object into an AST
      */
     public parseStrategy(json: strategy): StrategyNode {
-        // Reset validation context for new strategy
+        //reset validation context for new strategy
         this.validationContext = {
             indicatorRegistry: this.indicatorRegistry,
             definedDataSources: new Map(),
@@ -91,19 +91,19 @@ export class StrategyParser {
             warnings: [],
         };
 
-        // Parse data sources
+        //parse data sources
         const dataSources = this.parseDataSources(json.data);
 
-        // Parse actions
+        //parse actions
         const actions = this.parseActions(json.actions);
 
-        // Parse rules
+        //parse rules
         const rules = this.parseRules(json.rules);
 
-        // Parse position limits
+        //parse position limits
         const positionLimits = this.parsePositionLimits(json.position_limits);
 
-        // Create strategy node
+        //create strategy node
         const strategyNode = new StrategyNode(
             json.name,
             json.description,
@@ -126,7 +126,7 @@ export class StrategyParser {
             const node = this.parseDataSource(source);
             nodes.push(node);
 
-            // Register for validation
+            //register for validation
             this.validationContext.definedDataSources.set(source.id, node);
         }
 
@@ -141,7 +141,7 @@ export class StrategyParser {
             const indicator = source as data_indicator;
             const params = new Map<string, any>();
 
-            // Convert params object to Map
+            //convert params object to Map
             for (const [key, value] of Object.entries(indicator.params)) {
                 params.set(key, value);
             }
@@ -178,7 +178,7 @@ export class StrategyParser {
             const actionNode = new ActionNode(action.id, orderNode);
             nodes.push(actionNode);
 
-            // Register for validation
+            //register for validation
             this.validationContext.definedActions.set(action.id, actionNode);
         }
 
@@ -208,7 +208,7 @@ export class StrategyParser {
                     this.parseNumericExpression(limitOrder.limit_price)
                 );
 
-            // Add other order types as needed
+            //add other order types as needed
             default:
                 throw new Error(`Unsupported order type: ${order.type}`);
         }
@@ -230,15 +230,15 @@ export class StrategyParser {
      * Parse conditions (boolean logic)
      */
     private parseCondition(cond: condition): ConditionNode {
-        // Check for expression (comparison)
+        //check for expression (comparison)
         if ('expression' in cond && cond.expression) {
             return this.parseComparison(cond.expression);
         }
 
-        // Check for AND operation
+        //check for AND operation
         if ('and' in cond && cond.and) {
             const conditions = cond.and.map((c) => {
-                // Check if it's a direct comparison or nested condition
+                //check if it's a direct comparison or nested condition
                 if ('operandA' in c && 'operandB' in c && 'operator' in c) {
                     return this.parseComparison(c as comparison);
                 } else {
@@ -248,10 +248,10 @@ export class StrategyParser {
             return new LogicalOperationNode('and', conditions);
         }
 
-        // Check for OR operation
+        //check for OR operation
         if ('or' in cond && cond.or) {
             const conditions = cond.or.map((c) => {
-                // Check if it's a direct comparison or nested condition
+                //check if it's a direct comparison or nested condition
                 if ('operandA' in c && 'operandB' in c && 'operator' in c) {
                     return this.parseComparison(c as comparison);
                 } else {
@@ -275,18 +275,18 @@ export class StrategyParser {
      * Parse numeric expressions
      */
     public parseNumericExpression(expr: numeric_expression): ExpressionNode {
-        // Check if it's a simple value
+        //check if it's a simple value
         if (typeof expr === 'number') {
             return new LiteralNumberNode(expr);
         }
 
-        // Check if it's a variable
+        //check if it's a variable
         if (this.isVariable(expr)) {
             const varExpr = expr as numeric_variable;
             return new VariableNode(varExpr.var);
         }
 
-        // Check if it's an operation
+        //check if it's an operation
         if (this.isOperation(expr)) {
             const op = expr as operation;
             return new BinaryOperationNode(
@@ -296,13 +296,13 @@ export class StrategyParser {
             );
         }
 
-        // Check if it's an indicator output reference
+        //check if it's an indicator output reference
         if (this.isIndicatorOutputRef(expr)) {
             const ref = expr as indicator_output_ref;
             return new IndicatorOutputRefNode(ref.indicator_id, ref.output);
         }
 
-        // Check if it's a candle field reference
+        //check if it's a candle field reference
         if (this.isCandleFieldRef(expr)) {
             const ref = expr as candle_field_ref;
             return new CandleFieldRefNode(ref.candle_id, ref.field);
@@ -402,7 +402,7 @@ export class CrossoverDetector {
         current: comparison,
         previous: comparison
     ): CrossoverNode | null {
-        // Check if we're comparing the same indicators/values
+        //check if we're comparing the same indicators/values
         if (
             !this.isSameExpression(current.operandA, previous.operandA) ||
             !this.isSameExpression(current.operandB, previous.operandB)
@@ -410,7 +410,7 @@ export class CrossoverDetector {
             return null;
         }
 
-        // Detect bullish crossover (current > and previous <=)
+        //detect bullish crossover (current > and previous <=)
         if (
             current.operator === '>' &&
             (previous.operator === '<=' || previous.operator === '<')
@@ -423,7 +423,7 @@ export class CrossoverDetector {
             );
         }
 
-        // Detect bearish crossover (current < and previous >=)
+        //detect bearish crossover (current < and previous >=)
         if (
             current.operator === '<' &&
             (previous.operator === '>=' || previous.operator === '>')
@@ -443,7 +443,7 @@ export class CrossoverDetector {
         a: numeric_expression,
         b: numeric_expression
     ): boolean {
-        // Simplified comparison - would need more sophisticated logic in production
+        //simplified comparison - would need more sophisticated logic in production
         return JSON.stringify(a) === JSON.stringify(b);
     }
 }
@@ -461,10 +461,11 @@ export function createStrategyParser(
 /**
  * Create a default indicator registry with common indicators
  */
+//TODO: create this from the indicator registry that we have at home
 function createDefaultIndicatorRegistry(): Map<string, any> {
     const registry = new Map<string, any>();
 
-    // Add common indicators
+    //add common indicators
     registry.set('sma', {
         type: 'sma',
         display_name: 'Simple Moving Average',

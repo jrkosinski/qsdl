@@ -3,25 +3,25 @@
  */
 
 // ============================================================================
-// Execution Context
+//execution Context
 // ============================================================================
 
 export interface ExecutionContext {
-    // Market data
+    //Market data
     currentCandles: Map<string, CandleData>;
     historicalCandles: Map<string, CandleData[]>;
 
-    // Calculated values
+    //calculated values
     indicatorValues: Map<string, number | number[]>;
 
-    // Portfolio state
+    //portfolio state
     positions: Map<string, Position>;
     portfolioValue: number;
 
-    // Variable bindings
+    //variable bindings
     variables: Map<string, any>;
 
-    // Time context
+    //time context
     currentTime: Date;
     timeframe: string;
 }
@@ -44,7 +44,7 @@ export interface Position {
 }
 
 // ============================================================================
-// Base AST Node
+//base AST Node
 // ============================================================================
 
 export abstract class ASTNode {
@@ -59,7 +59,7 @@ export abstract class ASTNode {
     abstract validate(context: ValidationContext): ValidationResult;
     abstract accept<T>(visitor: ASTVisitor<T>): T;
 
-    // Helper for debugging
+    //helper for debugging
     abstract toString(): string;
 }
 
@@ -96,7 +96,7 @@ export interface ValidationWarning {
 }
 
 // ============================================================================
-// Expression Nodes (for numeric expressions)
+//expression Nodes (for numeric expressions)
 // ============================================================================
 
 export abstract class ExpressionNode extends ASTNode {
@@ -143,7 +143,7 @@ export class VariableNode extends ExpressionNode {
     }
 
     validate(context: ValidationContext): ValidationResult {
-        // Variables are validated at runtime
+        //variables are validated at runtime
         return { valid: true, errors: [], warnings: [] };
     }
 
@@ -309,7 +309,7 @@ export class CandleFieldRefNode extends ExpressionNode {
 }
 
 // ============================================================================
-// Condition Nodes (for boolean logic)
+//condition Nodes (for boolean logic)
 // ============================================================================
 
 export abstract class ConditionNode extends ASTNode {
@@ -343,7 +343,7 @@ export class ComparisonNode extends ConditionNode {
             case '>=':
                 return leftValue >= rightValue;
             case '==':
-                return Math.abs(leftValue - rightValue) < 1e-10; // Floating point equality
+                return Math.abs(leftValue - rightValue) < 1e-10; //floating point equality
             case '!=':
                 return Math.abs(leftValue - rightValue) >= 1e-10;
             default:
@@ -421,12 +421,12 @@ export class CrossoverNode extends ConditionNode {
     }
 
     evaluate(context: ExecutionContext): boolean {
-        // This requires historical data to detect crossover
-        // For now, simplified implementation
+        //this requires historical data to detect crossover
+        //for now, simplified implementation
         const current1 = this.series1.evaluate(context);
         const current2 = this.series2.evaluate(context);
 
-        // TODO: Implement proper crossover detection with historical values
+        //tODO: Implement proper crossover detection with historical values
         if (this.direction === 'above') {
             return current1 > current2;
         } else {
@@ -457,7 +457,7 @@ export class CrossoverNode extends ConditionNode {
 }
 
 // ============================================================================
-// Data Source Nodes
+//data Source Nodes
 // ============================================================================
 
 export abstract class DataSourceNode extends ASTNode {
@@ -485,7 +485,7 @@ export class IndicatorNode extends DataSourceNode {
     }
 
     validate(context: ValidationContext): ValidationResult {
-        // Check if indicator type exists in registry
+        //check if indicator type exists in registry
         if (!context.indicatorRegistry.has(this.indicatorType)) {
             return {
                 valid: false,
@@ -499,7 +499,7 @@ export class IndicatorNode extends DataSourceNode {
             };
         }
 
-        // TODO: Validate parameters against indicator definition
+        //tODO: Validate parameters against indicator definition
 
         return { valid: true, errors: [], warnings: [] };
     }
@@ -573,7 +573,7 @@ export class TimeframeNode extends ASTNode {
 }
 
 // ============================================================================
-// Action Nodes
+//action Nodes
 // ============================================================================
 
 export class ActionNode extends ASTNode {
@@ -663,7 +663,7 @@ export class LimitOrderNode extends OrderNode {
 }
 
 // ============================================================================
-// Rule Nodes
+//rule Nodes
 // ============================================================================
 
 export class RuleNode extends ASTNode {
@@ -678,7 +678,7 @@ export class RuleNode extends ASTNode {
     validate(context: ValidationContext): ValidationResult {
         const conditionResult = this.condition.validate(context);
 
-        // Validate action references
+        //validate action references
         const errors: ValidationError[] = [...conditionResult.errors];
 
         for (const actionId of this.thenActions) {
@@ -724,7 +724,7 @@ export class RuleNode extends ASTNode {
 }
 
 // ============================================================================
-// Position Management Nodes
+//position Management Nodes
 // ============================================================================
 
 export class PositionLimitNode extends ASTNode {
@@ -761,7 +761,7 @@ export class PositionLimitNode extends ASTNode {
 }
 
 // ============================================================================
-// Root Strategy Node
+//root Strategy Node
 // ============================================================================
 
 export class StrategyNode extends ASTNode {
@@ -780,35 +780,35 @@ export class StrategyNode extends ASTNode {
         const errors: ValidationError[] = [];
         const warnings: ValidationWarning[] = [];
 
-        // Validate all data sources
+        //validate all data sources
         for (const dataSource of this.dataSources) {
             const result = dataSource.validate(context);
             errors.push(...result.errors);
             warnings.push(...result.warnings);
         }
 
-        // Validate all actions
+        //validate all actions
         for (const action of this.actions) {
             const result = action.validate(context);
             errors.push(...result.errors);
             warnings.push(...result.warnings);
         }
 
-        // Validate all rules
+        //validate all rules
         for (const rule of this.rules) {
             const result = rule.validate(context);
             errors.push(...result.errors);
             warnings.push(...result.warnings);
         }
 
-        // Validate position limits
+        //validate position limits
         for (const limit of this.positionLimits) {
             const result = limit.validate(context);
             errors.push(...result.errors);
             warnings.push(...result.warnings);
         }
 
-        // Check for required components
+        //check for required components
         if (this.dataSources.length === 0) {
             errors.push({
                 message: 'Strategy must have at least one data source',
@@ -854,7 +854,7 @@ export class StrategyNode extends ASTNode {
 }
 
 // ============================================================================
-// Visitor Pattern for AST Traversal
+//visitor Pattern for AST Traversal
 // ============================================================================
 
 export interface ASTVisitor<T> {

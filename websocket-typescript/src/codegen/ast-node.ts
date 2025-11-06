@@ -263,7 +263,13 @@ export class IndicatorOutputRefNode extends ExpressionNode {
 export class CandleFieldRefNode extends ExpressionNode {
     constructor(
         public readonly candleId: string,
-        public readonly field: 'open' | 'high' | 'low' | 'close' | 'volume'
+        public readonly field:
+            | 'open'
+            | 'high'
+            | 'low'
+            | 'close'
+            | 'volume'
+            | 'timestamp'
     ) {
         super('CandleFieldRef');
     }
@@ -273,7 +279,7 @@ export class CandleFieldRefNode extends ExpressionNode {
         if (!candle) {
             throw new Error(`Candle not found: ${this.candleId}`);
         }
-        return candle[this.field];
+        return candle[this.field] as number;
     }
 
     validate(context: ValidationContext): ValidationResult {

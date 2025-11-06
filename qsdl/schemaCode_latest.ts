@@ -18,8 +18,16 @@ The end result of a strategy is a chunk of JSON that has all of the necessary in
 //TODO: (MED) way to specify candle relationships
 //TODO: (HARD) selective indicator library 
 //TODO: (EASY) handling of multiple symbols (just verify)
+//TODO: (EASY) dynamic position size expressions (notably: a way to indicate "current size of position")
 //TODO: (?) is another validation pass needed, to make sure that indicator_id s and outputs/inputs names are valid?
 //TODO: (?) are known good examples of indicators needed to feed to the LLM?
+//TODO: (HARD) management of trailing stops 
+
+//TODO: 
+Position sizing: 
+1. a constant passed in as variable 
+2. a percentage of portfolio
+3. a risk% based on trailing stop-loss order
 */
 
 // ============================================================================

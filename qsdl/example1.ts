@@ -59,7 +59,28 @@ const example1: strategy = {
             },
         } as data_indicator,
     ],
-    actions: [],
+    actions: [
+        {
+            id: 'buy',
+            order: {
+                type: 'market',
+                symbol: { var: '$SYM' },
+                quantity: { var: '$POSMAX' }, //TODO: HERE WE NEED A VARIABLE TO INDICATE POSITION SIZE
+                side: 'buy',
+                tif: 'gtc',
+            },
+        },
+        {
+            id: 'sell',
+            order: {
+                type: 'market',
+                symbol: { var: '$SYM' },
+                quantity: { var: '$POSMAX' }, //TODO: HERE WE NEED A VARIABLE TO INDICATE POSITION SIZE
+                side: 'sell',
+                tif: 'gtc',
+            },
+        },
+    ],
     rules: [
         {
             if: {

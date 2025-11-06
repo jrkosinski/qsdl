@@ -99,7 +99,7 @@ export class WebsocketClient {
         let message = data.toString();
         this._logger.debug(`Client received: ${message}`);
 
-        // Notify all registered message handlers
+        //notify all registered message handlers
         this._messageHandlers.forEach((handler) => {
             try {
                 handler(message);

@@ -16,7 +16,7 @@
 import { qsdl1, qsdl1_response1 } from './examples';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
-import { schema } from './schema/schema_v0.0.1';
+import { schema } from './schema/schema_v0.0.1'; //'../../../../schema/schema_v0.0.1';
 import { AnthropicLLMApi, OpenAILLMApi } from './llms';
 import chalk from 'chalk';
 import prompts from 'prompts';
@@ -26,6 +26,8 @@ import dotenv from 'dotenv';
 import { AnthropicConversation, IUserIO } from './llms/conversation';
 import { WebsocketConversationServer } from './server/websocket-server';
 import { WebsocketClient } from './client/websocket-client';
+import { JavaScriptCodeGenerator } from './codegen/code-generators';
+import { runCodeGenExample, runCodeGenTests } from './codegen/example';
 dotenv.config();
 
 const inputModule: IUserIO = {
@@ -42,7 +44,7 @@ const inputModule: IUserIO = {
     },
     async onQuestion(question: string): Promise<void> {
         console.log(chalk.cyan('Question:'), question);
-        console.log(); // Empty line for spacing
+        console.log(); //empty line for spacing
     },
     async onStats(stats: string): Promise<void> {
         console.log(chalk.gray(`ℹ️  ${stats}\n`));
@@ -53,81 +55,9 @@ const inputModule: IUserIO = {
     },
     async onMessage(message: string): Promise<void> {
         console.log(chalk.blue('💬 Message:'), message);
-        console.log(); // Empty line for spacing
+        console.log(); //empty line for spacing
     },
 };
-
-/**
- * Represents a trading strategy with its name and QSDL definition.
- */
-interface IStrategy {
-    name: string;
-    qsdl: any;
-}
-
-//2. websocket server & client
-//3. logging
-//4. schema improvements
-
-/**
- * Interface for parsing natural language text into structured strategy objects.
- */
-interface IStrategyParser {
-    parse(text: string): Promise<IStrategy>;
-}
-
-/**
- * Tests the QSDL schema validation using AJV.
- * Compiles the schema and validates an example QSDL response against it.
- */
-function testSchemaValidation() {
-    //compile the schema
-    const ajv = new Ajv({ allErrors: true, strict: false });
-    addFormats(ajv);
-    const validate = ajv.compile(schema);
-
-    //validate the example QSDL
-    const valid = validate(qsdl1_response1);
-    if (!valid) {
-        console.error('QSDL validation errors:', validate.errors);
-    } else {
-        console.log('QSDL is valid');
-    }
-}
-
-/**
- * Tests the OpenAI API integration.
- * Sends a simple query to verify API connectivity and response handling.
- */
-async function testOpenAI() {
-    const openai = new OpenAILLMApi(process.env.OPENAI_API_KEY || '');
-    const response = await openai.query('say either yes or no, no other words');
-    console.log('OpenAI response:', response);
-}
-
-/**
- * Tests the Anthropic API integration.
- * Sends a simple query to verify API connectivity and response handling.
- */
-async function testAnthropic() {
-    const anthropic = new AnthropicLLMApi(process.env.ANTHROPIC_API_KEY || '');
-    const response = await anthropic.query(
-        'say either yes or no, no other words'
-    );
-    console.log('Anthropic response:', response);
-}
-
-/**
- * Runs a multi-turn conversation test using Anthropic's API.
- * Creates an interactive CLI interface for users to define trading strategies
- * through a conversational flow, with colored console output for better UX.
- *
- * @returns {Promise<string>} The final QSDL JSON string generated from the conversation
- */
-async function multiTurnConversationTestTest(): Promise<string> {
-    const conversation = new AnthropicConversation(inputModule);
-    return await conversation.startConversation();
-}
 
 /**
  * Main application entry point.
@@ -137,54 +67,60 @@ async function multiTurnConversationTestTest(): Promise<string> {
 async function main() {
     console.log('Application started successfully');
 
-    //testSchemaValidation();
-    //testOpenAI();
-    //testAnthropic();
-    new WebsocketConversationServer({
-        port: 1077,
-        jwtSecret: process.env.JWT_SECRET || 'secret',
-    }).start();
+    const TEST_WSS_SERVER = false;
+    const TEST_WSS_CLIENT = false;
+    const TEST_CODE_GEN = true;
 
-    const client = new WebsocketClient({
-        url: 'http://localhost:1077',
-    });
+    if (TEST_WSS_SERVER) {
+        //testSchemaValidation();
+        //testOpenAI();
+        //testAnthropic();
+        new WebsocketConversationServer({
+            port: 1077,
+            jwtSecret: process.env.JWT_SECRET || 'secret',
+        }).start();
+    }
 
-    client.onMessage(async (data) => {
-        if (data.startsWith('{') && data.endsWith('}')) {
-            const message: any = JSON.parse(data);
-            if (message.type == 'message') {
-                inputModule.onMessage(message.text);
-            }
-            if (message.type == 'prompt') {
-                const response = await inputModule.getUserResponse(
-                    message.text
-                );
-                client.send(response);
-            }
-            if (message.type == 'stats') {
-                inputModule.onStats(message.text);
-            }
-            if (message.type == 'error') {
-                inputModule.onError(message.text);
-            }
-            if (message.type == 'question') {
-                inputModule.onQuestion(message.text);
-            }
-        } else {
-            inputModule.onMessage(data);
-        }
-    });
+    if (TEST_WSS_CLIENT) {
+        const client = new WebsocketClient({
+            url: 'http://localhost:1077',
+        });
 
-    //await client.connect();
+        client.onMessage(async (data) => {
+            if (data.startsWith('{') && data.endsWith('}')) {
+                const message: any = JSON.parse(data);
+                if (message.type == 'message') {
+                    inputModule.onMessage(message.text);
+                }
+                if (message.type == 'prompt') {
+                    const response = await inputModule.getUserResponse(
+                        message.text
+                    );
+                    client.send(response);
+                }
+                if (message.type == 'stats') {
+                    inputModule.onStats(message.text);
+                }
+                if (message.type == 'error') {
+                    inputModule.onError(message.text);
+                }
+                if (message.type == 'question') {
+                    inputModule.onQuestion(message.text);
+                }
+            } else {
+                inputModule.onMessage(data);
+            }
+        });
 
-    /*
-    multiTurnConversationTestTest().then((r) => {
-        console.log(r);
-        fs.writeFileSync('output.json', JSON.stringify(r, null, 2));
-    });
-    */
+        await client.connect();
+    }
 
-    await new Promise(() => {}); // never resolves
+    if (TEST_CODE_GEN) {
+        runCodeGenExample();
+        runCodeGenTests();
+    }
+
+    await new Promise(() => {}); //never resolves
 }
 
 main();

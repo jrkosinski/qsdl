@@ -80,7 +80,7 @@ class WebsocketUserIO implements IUserIO {
                 resolve(response);
             };
 
-            // Send prompt to client
+            //send prompt to client
             this._sendMessageToClient(MessageType.prompt, prompt);
         });
     }
@@ -120,7 +120,7 @@ class WebsocketUserIO implements IUserIO {
         const message = data.toString();
         this._logger.info('Server received:' + message);
 
-        // If we're waiting for a response, resolve the pending promise
+        //if we're waiting for a response, resolve the pending promise
         if (this._pendingResponse) {
             this._logger.debug('there is a pending response, handling it...');
             this._pendingResponse(message);
@@ -162,7 +162,7 @@ export class WebsocketConversationServer {
 
         this._wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
             if (ENABLE_JWT_SECURITY) {
-                // Verify JWT token from query parameter or header
+                //verify JWT token from query parameter or header
                 const token = this._extractToken(req);
 
                 if (!this._verifyToken(token)) {
@@ -211,7 +211,7 @@ export class WebsocketConversationServer {
     }
 
     private _extractToken(req: IncomingMessage): string | null {
-        // Try to get token from query parameter
+        //try to get token from query parameter
         const url = new URL(req.url || '', `http://${req.headers.host}`);
         const tokenFromQuery = url.searchParams.get('token');
 
@@ -219,7 +219,7 @@ export class WebsocketConversationServer {
             return tokenFromQuery;
         }
 
-        // Try to get token from Authorization header
+        //try to get token from Authorization header
         const authHeader = req.headers.authorization;
         if (authHeader?.startsWith('Bearer ')) {
             return authHeader.substring(7);

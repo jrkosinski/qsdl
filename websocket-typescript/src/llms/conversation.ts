@@ -326,7 +326,7 @@ export class AnthropicConversation {
             {
                 type: 'text',
                 text: this._initialSystemPrompt,
-                cache_control: { type: 'ephemeral' }, // Cache the initial instructions
+                cache_control: { type: 'ephemeral' }, //cache the initial instructions
             },
             {
                 type: 'text',
@@ -335,7 +335,7 @@ export class AnthropicConversation {
                     null,
                     2
                 )}`,
-                cache_control: { type: 'ephemeral' }, // Cache the schema
+                cache_control: { type: 'ephemeral' }, //cache the schema
             },
         ];
 
@@ -425,7 +425,7 @@ export class AnthropicConversation {
                         `Response for re-validation: ${response}`
                     );
 
-                    // Update assistantMessage for next iteration
+                    //update assistantMessage for next iteration
                     json = this._parseJsonSafe(response.trim());
 
                     this._logger.debug(

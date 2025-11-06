@@ -95,6 +95,7 @@ export class AnthropicConversation {
     private _mockMode: boolean = false;
     private _logger: Logger = new Logger('ANTHC');
     private _strategyDescription: string = '';
+    private _pendingPrompt: string = '';
 
     /**
      * Creates a new AnthropicConversation instance.
@@ -131,7 +132,11 @@ export class AnthropicConversation {
             );
 
             //read user input
-            const userMessage = await this._readUserInput(isFirstTime);
+            const userMessage = await this._readUserInput(
+                isFirstTime
+                    ? 'Explain your trading strategy in words:'
+                    : this._pendingPrompt
+            );
             isFirstTime = false;
 
             //check for voluntary exit
@@ -223,15 +228,11 @@ export class AnthropicConversation {
      * @param {boolean} isFirstTime - True if this is the first user input, false otherwise
      * @returns {Promise<string>} The trimmed user input
      */
-    private async _readUserInput(isFirstTime: boolean): Promise<string> {
+    private async _readUserInput(prompt: string): Promise<string> {
         this._logger.debug('_readUserInput');
-        const userMessage = isFirstTime
-            ? (
-                  await this._inputModule.getUserResponse(
-                      'Explain the trading strategy:'
-                  )
-              ).trim()
-            : (await this._inputModule.getUserResponse('Your reply:')).trim();
+        const userMessage = (
+            await this._inputModule.getUserResponse(prompt)
+        ).trim();
         return userMessage;
     }
 

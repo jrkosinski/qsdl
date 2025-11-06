@@ -9,31 +9,29 @@ These are only for trading forex, stocks, and futures; no complex derivatives.
 
 The end result of a strategy is a chunk of JSON that has all of the necessary information for defining how a specific trading strategy works, with no ambiguity. 
 
-//TODO: parameterize symbols, indicator parameters, etc. 
-//TODO: order amounts should be formulae
+//DOING: (MED) parameterize symbols, indicator parameters, etc. 
+//TODO: (EASY) order amounts should be formulae
+//TODO: (MED) indicators library
+//TODO: (HARD) state management 
+//TODO: (HARD) error handling? 
+//TODO: (MED) time constraints 
+//TODO: (MED) way to specify candle relationships
+//TODO: (HARD) selective indicator library 
+//TODO: (EASY) handling of multiple symbols (just verify)
+//TODO: (?) is another validation pass needed, to make sure that indicator_id s and outputs/inputs names are valid?
+//TODO: (?) are known good examples of indicators needed to feed to the LLM?
 */
 
 // ============================================================================
 // INDICATOR REGISTRY - Defines all available indicators and their signatures
 // ============================================================================
 
-type string_value = string | string_variable;
-type numeric_value = number | numeric_variable;
-
-interface string_variable {
-    var: string;
-}
-
-interface numeric_variable {
-    var: string;
-}
-
 /**
  * Describes an input parameter for an indicator
  */
 interface indicator_input {
     name: string;
-    type: 'number' | 'string' | 'source'; // source is for specifying OHLC field
+    type: 'number' | 'string' | 'source'; //source is for specifying OHLC field
     required: boolean;
     default_value?: number | string;
     description?: string;
@@ -48,11 +46,14 @@ interface indicator_input {
 interface indicator_output_definition {
     name: string;
     index: number;
+    is_default?: boolean;
     description?: string;
 }
 
 /**
  * Registry entry for a single indicator type
+ * Indicator has: a type & a name
+ * Indicator is: a list of inputs & outputs
  */
 interface indicator_definition {
     type: string; // 'sma', 'ema', 'macd', etc.
@@ -70,7 +71,7 @@ interface indicator_registry {
     indicators: { [key: string]: indicator_definition };
 }
 
-// Example registry entries (partial - you'd have more)
+//Example registry entries
 const INDICATOR_REGISTRY: indicator_registry = {
     indicators: {
         sma: {
@@ -84,8 +85,16 @@ const INDICATOR_REGISTRY: indicator_registry = {
                     type: 'number',
                     required: true,
                     min: 1,
-                    max: 500,
+                    max: 1000,
                     description: 'Number of periods to average',
+                },
+                {
+                    name: 'shift',
+                    type: 'number',
+                    required: false,
+                    min: 1,
+                    max: 1000,
+                    description: 'Shift or offset from most recent bar',
                 },
                 {
                     name: 'source',
@@ -108,6 +117,7 @@ const INDICATOR_REGISTRY: indicator_registry = {
                 {
                     name: 'value',
                     index: 0,
+                    is_default: true,
                     description: 'The SMA value',
                 },
             ],
@@ -167,6 +177,7 @@ const INDICATOR_REGISTRY: indicator_registry = {
                 {
                     name: 'histogram',
                     index: 2,
+                    is_default: true,
                     description: 'MACD histogram (MACD - Signal)',
                 },
             ],
@@ -279,6 +290,29 @@ interface data_indicator extends data_source {
 // VALUE REFERENCES - How to reference indicator outputs and candle values
 // ============================================================================
 
+type string_value = string | string_variable;
+type numeric_value = number | numeric_variable;
+
+interface string_variable {
+    var: string;
+}
+
+interface numeric_variable {
+    var: string;
+}
+
+interface string_ternary_expression {
+    if: condition;
+    then: string_value;
+    else: string_value;
+}
+
+interface numeric_ternary_expression {
+    if: condition;
+    then: numeric_expression | numeric_ternary_expression;
+    else: numeric_expression | numeric_ternary_expression;
+}
+
 /**
  * Reference to a specific output from an indicator
  */
@@ -293,42 +327,32 @@ interface indicator_output_ref {
  */
 interface candle_field_ref {
     candle_id: string; // Must be valid candle id from data sources
-    field: 'open' | 'high' | 'low' | 'close' | 'volume';
-}
-
-/**
- * A value that can be used in expressions and comparisons
- */
-interface value_expression {
-    value:
-        | number
-        | string
-        | operation
-        | indicator_output_ref
-        | candle_field_ref;
+    field: 'open' | 'high' | 'low' | 'close' | 'volume' | 'timestamp';
 }
 
 /**
  * Numeric-only expression (for things like prices that must be numbers)
  */
-interface numeric_expression {
-    value: number | operation | indicator_output_ref | candle_field_ref;
-}
+type numeric_expression =
+    | numeric_value
+    | operation
+    | indicator_output_ref
+    | candle_field_ref;
 
 // ============================================================================
 // OPERATIONS AND CONDITIONS
 // ============================================================================
 
 interface comparison {
-    operandA: value_expression | number;
-    operandB: value_expression | number;
-    comparison: '<' | '>' | '<=' | '>=' | '==' | '!=';
+    operandA: numeric_expression;
+    operandB: numeric_expression;
+    operator: '<' | '>' | '<=' | '>=' | '==' | '!=';
 }
 
 interface operation {
-    operand: '+' | '*' | '-' | '/' | '%';
-    valueA: value_expression;
-    valueB: value_expression;
+    operator: '+' | '*' | '-' | '/' | '%';
+    operandA: numeric_expression;
+    operandB: numeric_expression;
 }
 
 interface condition {
@@ -357,8 +381,8 @@ interface action {
  */
 interface position_limit {
     symbol: string_value;
-    max: value_expression;
-    min: value_expression;
+    max: numeric_expression;
+    min: numeric_expression;
 }
 
 /**
@@ -434,7 +458,7 @@ const Example_SMA_Crossover: strategy = {
             order: {
                 type: 'market',
                 side: 'buy',
-                quantity: { value: 100 },
+                quantity: 100,
                 symbol: { var: '$sym1' },
                 tif: 'gtc',
             },
@@ -444,7 +468,7 @@ const Example_SMA_Crossover: strategy = {
             order: {
                 type: 'market',
                 side: 'sell',
-                quantity: { value: 100 },
+                quantity: 100,
                 symbol: { var: '$sym1' },
                 tif: 'gtc',
             },
@@ -453,8 +477,8 @@ const Example_SMA_Crossover: strategy = {
     position_limits: [
         {
             symbol: { var: '$sym1' },
-            max: { value: 100 },
-            min: { value: 0 },
+            max: 100,
+            min: 0,
         },
     ],
     rules: [
@@ -463,34 +487,26 @@ const Example_SMA_Crossover: strategy = {
                 and: [
                     {
                         // Fast MA > Slow MA
-                        comparison: '>',
+                        operator: '>',
                         operandA: {
-                            value: {
-                                indicator_id: 'fast_ma',
-                                output: 'value', // Can use name
-                            },
+                            indicator_id: 'fast_ma',
+                            output: 'value', // Can use name
                         },
                         operandB: {
-                            value: {
-                                indicator_id: 'slow_ma',
-                                output: 0, // Or can use index
-                            },
+                            indicator_id: 'slow_ma',
+                            output: 0, // Or can use index
                         },
                     } as comparison,
                     {
                         // Price above fast MA
-                        comparison: '>',
+                        operator: '>',
                         operandA: {
-                            value: {
-                                candle_id: 'current_price',
-                                field: 'close',
-                            },
+                            candle_id: 'current_price',
+                            field: 'close',
                         },
                         operandB: {
-                            value: {
-                                indicator_id: 'fast_ma',
-                                output: 'value',
-                            },
+                            indicator_id: 'fast_ma',
+                            output: 'value',
                         },
                     } as comparison,
                 ],
@@ -538,7 +554,7 @@ const Example_MACD_Strategy: strategy = {
             order: {
                 type: 'market',
                 side: 'sell',
-                quantity: { value: 10 },
+                quantity: 10,
                 symbol: 'SPY',
                 tif: 'day',
             },
@@ -547,8 +563,8 @@ const Example_MACD_Strategy: strategy = {
     position_limits: [
         {
             symbol: 'SPY',
-            max: { value: 10 },
-            min: { value: 0 },
+            max: 10,
+            min: 0,
         },
     ],
     rules: [
@@ -558,23 +574,19 @@ const Example_MACD_Strategy: strategy = {
                 and: [
                     {
                         // Current histogram > 0
-                        comparison: '>',
+                        operator: '>',
                         operandA: {
-                            value: {
-                                indicator_id: 'macd_indicator',
-                                output: 'histogram', // Using named output
-                            },
+                            indicator_id: 'macd_indicator',
+                            output: 'histogram', // Using named output
                         },
                         operandB: 0,
                     } as comparison,
                     {
                         // Previous histogram <= 0
-                        comparison: '<=',
+                        operator: '<=',
                         operandA: {
-                            value: {
-                                indicator_id: 'macd_prev',
-                                output: 2, // Using index for histogram
-                            },
+                            indicator_id: 'macd_prev',
+                            output: 2, // Using index for histogram
                         },
                         operandB: 0,
                     } as comparison,
@@ -587,22 +599,18 @@ const Example_MACD_Strategy: strategy = {
             if: {
                 and: [
                     {
-                        comparison: '<',
+                        operator: '<',
                         operandA: {
-                            value: {
-                                indicator_id: 'macd_indicator',
-                                output: 'histogram',
-                            },
+                            indicator_id: 'macd_indicator',
+                            output: 'histogram',
                         },
                         operandB: 0,
                     } as comparison,
                     {
-                        comparison: '>=',
+                        operator: '>=',
                         operandA: {
-                            value: {
-                                indicator_id: 'macd_prev',
-                                output: 'histogram',
-                            },
+                            indicator_id: 'macd_prev',
+                            output: 'histogram',
                         },
                         operandB: 0,
                     } as comparison,

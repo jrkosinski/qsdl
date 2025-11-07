@@ -1,0 +1,150 @@
+#include <Trade\Trade.mqh>
+#include <Trade\PositionInfo.mqh>
+#include <Trade\OrderInfo.mqh>
+
+CTrade trade;
+CPositionInfo position;
+COrderInfo orderInfo;
+
+// ========================= BODY START =========================
+{{body}}
+// ========================== BODY END ========================== 
+
+struct OrderParams {
+   string   symbol;
+   string   type;          // "market", "limit", "stop", "stop_limit", etc.
+   string   side;          // "buy" or "sell"
+   double   volume;
+   double   price;
+   double   stop_price;
+   double   limit_price;
+   double   trail_amount;
+   double   trail_percent;
+   double   limit_offset;
+   string   tif;           // "day", "gtc", "ioc", "fok", "gtd"
+   datetime expiration;
+   bool     extended_hours;
+   double   sl;
+   double   tp;
+};
+
+//---------------------------------------------------------
+//helper: map side to ORDER_TYPE
+//---------------------------------------------------------
+int OrderTypeFromSide(string side, bool isLimit=false, bool isStop=false)
+{
+   if(side == "buy")
+      return isStop ? ORDER_TYPE_BUY_STOP :
+             isLimit ? ORDER_TYPE_BUY_LIMIT :
+                        ORDER_TYPE_BUY;
+   else
+      return isStop ? ORDER_TYPE_SELL_STOP :
+             isLimit ? ORDER_TYPE_SELL_LIMIT :
+                        ORDER_TYPE_SELL;
+}
+
+//---------------------------------------------------------
+//core function: ExecuteOrder
+//---------------------------------------------------------
+bool ExecuteOrder(OrderParams &o)
+{
+   trade.SetExpertMagicNumber(123456);
+   trade.SetTypeFillingBySymbol(o.symbol);
+   trade.SetDeviationInPoints(10);
+
+   int orderType = 0;
+   double ask = SymbolInfoDouble(o.symbol, SYMBOL_ASK);
+   double bid = SymbolInfoDouble(o.symbol, SYMBOL_BID);
+
+   //--------------- MARKET ------------------
+   if(o.type == "market")
+   {
+      if(o.side == "buy")
+         return trade.Buy(o.volume, o.symbol, ask, o.sl, o.tp);
+      else
+         return trade.Sell(o.volume, o.symbol, bid, o.sl, o.tp);
+   }
+
+   //--------------- LIMIT ------------------
+   if(o.type == "limit")
+   {
+      orderType = OrderTypeFromSide(o.side, true, false);
+      return trade.OrderSend(o.symbol, orderType, o.volume, o.limit_price, 10, o.sl, o.tp, "Limit", 0, 0, clrBlue);
+   }
+
+   //--------------- STOP -------------------
+   if(o.type == "stop")
+   {
+      orderType = OrderTypeFromSide(o.side, false, true);
+      return trade.OrderSend(o.symbol, orderType, o.volume, o.stop_price, 10, o.sl, o.tp, "Stop", 0, 0, clrRed);
+   }
+
+   //--------------- STOP-LIMIT --------------
+   if(o.type == "stop_limit")
+   {
+      MqlTradeRequest req = {0};
+      MqlTradeResult res = {0};
+      req.action      = TRADE_ACTION_PENDING;
+      req.symbol      = o.symbol;
+      req.volume      = o.volume;
+      req.type        = (o.side == "buy" ? ORDER_TYPE_BUY_STOP_LIMIT : ORDER_TYPE_SELL_STOP_LIMIT);
+      req.price       = o.stop_price;
+      req.stoplimit   = o.limit_price;
+      req.deviation   = 10;
+      req.magic       = 123456;
+      req.comment     = "Stop-Limit";
+      return OrderSend(req, res);
+   }
+
+   //--------------- TRAILING STOP -----------
+   if(o.type == "trailing_stop" || o.type == "trailing_stop_limit")
+   {
+      double trail = 0.0;
+      if(o.trail_amount > 0)
+         trail = o.trail_amount;
+      else if(o.trail_percent > 0)
+         trail = (o.trail_percent / 100.0) * (o.side == "buy" ? bid : ask);
+
+      bool ok;
+      if(o.side == "buy")
+         ok = trade.Buy(o.volume, o.symbol, ask, 0, 0);
+      else
+         ok = trade.Sell(o.volume, o.symbol, bid, 0, 0);
+
+      if(!ok) return false;
+      trade.PositionModify(o.symbol, 0, trail);
+      return true;
+   }
+
+   //--------------- FOK / IOC / GTD ----------
+   if(o.type == "fill_or_kill" || o.type == "immediate_or_cancel" || o.type == "good_till_date")
+   {
+      MqlTradeRequest req = {0};
+      MqlTradeResult res = {0};
+      req.action    = TRADE_ACTION_DEAL;
+      req.symbol    = o.symbol;
+      req.volume    = o.volume;
+      req.type      = (o.side == "buy" ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
+      req.price     = (o.side == "buy" ? ask : bid);
+      req.deviation = 10;
+      req.magic     = 123456;
+      req.comment   = o.type;
+
+      if(o.type == "fill_or_kill") req.type_filling = ORDER_FILL_FOK;
+      if(o.type == "immediate_or_cancel") req.type_filling = ORDER_FILL_IOC;
+      if(o.type == "good_till_date") req.type_time = ORDER_TIME_SPECIFIED; req.expiration = o.expiration;
+
+      return OrderSend(req, res);
+   }
+
+   //--------------- COMPLEX / UNSUPPORTED ---------------
+   if(o.type == "bracket" || o.type == "oco" || o.type == "pegged" ||
+      o.type == "iceberg" || o.type == "all_or_none")
+   {
+      PrintFormat("Order type '%s' not natively supported by MT5; implement logic manually.", o.type);
+      return false;
+   }
+
+   Print("Unknown order type: ", o.type);
+   return false;
+}

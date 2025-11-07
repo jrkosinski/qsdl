@@ -26,7 +26,6 @@ import dotenv from 'dotenv';
 import { AnthropicConversation, IUserIO } from './llms/conversation';
 import { WebsocketConversationServer } from './server/websocket-server';
 import { WebsocketClient } from './client/websocket-client';
-import { JavaScriptCodeGenerator } from './codegen/code-generators';
 import { runCodeGenExample, runCodeGenTests } from './codegen/example';
 dotenv.config();
 

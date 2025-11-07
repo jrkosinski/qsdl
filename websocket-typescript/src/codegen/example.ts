@@ -13,6 +13,7 @@ import {
     data_candle,
 } from '../schema/schemaCode_v0.1.3';
 import * as fs from 'fs';
+import { MT5CodeGenerator } from './code-generators/mt5';
 
 // ============================================================================
 //example Strategy JSON
@@ -246,15 +247,15 @@ export function runCodeGenExample() {
     console.log();
 
     //step 4: Generate Python code
-    console.log('Step 4: Generating Python code...');
-    const pythonGenerator = new PythonCodeGenerator();
-    const pythonCode = pythonGenerator.generate(ast);
-    console.log('✓ Python code generated');
+    console.log('Step 4: Generating MT5 code...');
+    const mt5Generator = new MT5CodeGenerator();
+    const mt5Code = mt5Generator.generate(ast);
+    console.log('✓ MT5 code generated');
     console.log();
 
-    console.log('Python Code Preview:');
+    console.log('MT5 Code Preview:');
     console.log('='.repeat(40));
-    const pythonLines = pythonCode.split('\n');
+    const pythonLines = mt5Code.split('\n');
     console.log(pythonLines.slice(0, 50).join('\n'));
     if (pythonLines.length > 50) {
         console.log('... (truncated) ...');
@@ -281,7 +282,7 @@ export function runCodeGenExample() {
 
     //step 6: Save generated code to files
     console.log('Step 6: Saving generated code...');
-    saveGeneratedCode(pythonCode, jsCode, ast.name || 'strategy');
+    saveGeneratedCode(mt5Code, jsCode, ast.name || 'strategy');
     console.log();
 
     console.log('='.repeat(80));
@@ -351,7 +352,9 @@ function saveGeneratedCode(
     jsCode: string,
     strategyName: string
 ): void {
-    console.log(`save Python code to: ${strategyName}_strategy.py`);
+    strategyName = strategyName.replace(' ', '_');
+
+    console.log(`save MT5 code to: ${strategyName}_strategy.mt5`);
     console.log(`save JavaScript code to: ${strategyName}_strategy.js`);
 
     fs.writeFileSync(`${strategyName}_strategy.py`, pythonCode, 'utf-8');

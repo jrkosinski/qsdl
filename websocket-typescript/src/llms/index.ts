@@ -52,7 +52,7 @@ export class AnthropicLLMApi implements ILLMApi {
 
     public async query(prompt: string): Promise<string> {
         const response = await this._api.messages.create({
-            model: 'claude-sonnet-4-5-20250929', //pick the model you’re allowed to use
+            model: 'claude-sonnet-4-5-20250929',
             max_tokens: 1024,
             messages: [{ role: 'user', content: prompt }],
         });

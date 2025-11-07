@@ -455,7 +455,7 @@ export class AnthropicConversation {
         this._logger.debug('_finalConfirmation');
 
         const response = await this._sendMessage(
-            'Explain your understand of this trading strategy back to me in words, so that I can confirm if you understood it. Do not prefix your response with Q:',
+            'Explain your understanding of this trading strategy back to me in words, so that I can confirm if you understood it. Do not prefix your response with Q:',
             'user'
         );
 

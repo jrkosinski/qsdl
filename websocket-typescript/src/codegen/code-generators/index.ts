@@ -72,4 +72,3 @@ export abstract class CodeGenerator<T> implements ASTVisitor<T> {
 
 export { JavaScriptCodeGenerator } from './javascript';
 export { MT5CodeGenerator } from './mt5';
-export { MT5CodeGenerator2 } from './mt5-2';

@@ -404,7 +404,7 @@ export interface rule {
 }
 
 // ============================================================================
-// MAIN STRATEGY export interface
+// MAIN STRATEGY
 // ============================================================================
 
 export interface strategy {
@@ -418,7 +418,7 @@ export interface strategy {
 }
 
 // ============================================================================
-// ORDERS (keeping your existing order definitions)
+// ORDERS
 // ============================================================================
 
 export interface base_order {

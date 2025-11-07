@@ -11,7 +11,6 @@ import {
 } from '../schema/schemaCode_v0.1.3';
 import * as fs from 'fs';
 import { MT5CodeGenerator } from './code-generators/mt5';
-import { MT5CodeGenerator2 } from './code-generators/mt5-2';
 
 // ============================================================================
 // Example Strategy JSON
@@ -246,7 +245,7 @@ export function runCodeGenExample() {
 
     //step 4: Generate Python code
     console.log('Step 4: Generating MT5 code...');
-    const mt5Generator = new MT5CodeGenerator2();
+    const mt5Generator = new MT5CodeGenerator();
     const mt5Code = mt5Generator.generate(ast);
     console.log('✓ MT5 code generated');
     console.log();
@@ -529,7 +528,7 @@ export function runCodeGenTests() {
     console.log('Test 3: Code generation');
     try {
         const { ast } = parser.parseAndValidate(exampleCodeGenStrategy);
-        const mt5Gen = new MT5CodeGenerator2();
+        const mt5Gen = new MT5CodeGenerator();
         const jsGen = new JavaScriptCodeGenerator();
 
         const pythonCode = mt5Gen.generate(ast);

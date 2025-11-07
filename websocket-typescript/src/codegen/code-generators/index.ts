@@ -22,7 +22,6 @@ import {
     IndicatorOutputRefNode,
     CandleFieldRefNode,
 } from '../ast-node';
-import { JavaScriptCodeGenerator } from './javascript';
 
 /**
  * Base code generator with common functionality
@@ -30,17 +29,23 @@ import { JavaScriptCodeGenerator } from './javascript';
 export abstract class CodeGenerator<T> implements ASTVisitor<T> {
     protected indent: number = 0;
     protected indentSize: number = 4;
+    protected code: string[] = [];
 
     protected getIndent(): string {
         return ' '.repeat(this.indent * this.indentSize);
     }
 
-    protected increaseIndent(): void {
+    protected increaseIndent() {
         this.indent++;
     }
 
-    protected decreaseIndent(): void {
+    protected decreaseIndent() {
         this.indent = Math.max(0, this.indent - 1);
+    }
+
+    protected addCodeLine(code?: string) {
+        if (code) this.code.push(this.getIndent() + code);
+        else this.code.push('');
     }
 
     abstract generate(ast: StrategyNode): string;
@@ -66,4 +71,5 @@ export abstract class CodeGenerator<T> implements ASTVisitor<T> {
 }
 
 export { JavaScriptCodeGenerator } from './javascript';
-export { PythonCodeGenerator } from './python';
+export { MT5CodeGenerator } from './mt5';
+export { MT5CodeGenerator2 } from './mt5-2';

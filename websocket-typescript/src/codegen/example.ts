@@ -3,10 +3,7 @@
  */
 
 import { createStrategyParser } from './parser';
-import {
-    PythonCodeGenerator,
-    JavaScriptCodeGenerator,
-} from './code-generators';
+import { JavaScriptCodeGenerator } from './code-generators';
 import {
     strategy,
     data_indicator,
@@ -14,9 +11,10 @@ import {
 } from '../schema/schemaCode_v0.1.3';
 import * as fs from 'fs';
 import { MT5CodeGenerator } from './code-generators/mt5';
+import { MT5CodeGenerator2 } from './code-generators/mt5-2';
 
 // ============================================================================
-//example Strategy JSON
+// Example Strategy JSON
 // ============================================================================
 
 export const exampleCodeGenStrategy: strategy = {
@@ -197,7 +195,7 @@ export const exampleCodeGenStrategy: strategy = {
 };
 
 // ============================================================================
-//Main Example: Parse, Validate, and Generate Code
+// Main Example: Parse, Validate, and Generate Code
 // ============================================================================
 
 export function runCodeGenExample() {
@@ -248,7 +246,7 @@ export function runCodeGenExample() {
 
     //step 4: Generate Python code
     console.log('Step 4: Generating MT5 code...');
-    const mt5Generator = new MT5CodeGenerator();
+    const mt5Generator = new MT5CodeGenerator2();
     const mt5Code = mt5Generator.generate(ast);
     console.log('✓ MT5 code generated');
     console.log();
@@ -291,10 +289,10 @@ export function runCodeGenExample() {
 }
 
 // ============================================================================
-//helper Functions
+// Helper Functions
 // ============================================================================
 
-function displayASTStructure(ast: any, indent: number = 0): void {
+function displayASTStructure(ast: any, indent: number = 0) {
     const indentStr = '  '.repeat(indent);
 
     if (ast === null || ast === undefined) {
@@ -351,18 +349,18 @@ function saveGeneratedCode(
     pythonCode: string,
     jsCode: string,
     strategyName: string
-): void {
+) {
     strategyName = strategyName.replace(' ', '_');
 
     console.log(`save MT5 code to: ${strategyName}_strategy.mt5`);
     console.log(`save JavaScript code to: ${strategyName}_strategy.js`);
 
-    fs.writeFileSync(`${strategyName}_strategy.py`, pythonCode, 'utf-8');
+    fs.writeFileSync(`${strategyName}_strategy.mt5`, pythonCode, 'utf-8');
     fs.writeFileSync(`${strategyName}_strategy.js`, jsCode, 'utf-8');
 }
 
 // ============================================================================
-//advanced Example: Strategy with Complex Conditions
+// Advanced Example: Strategy with Complex Conditions
 // ============================================================================
 
 export const advancedStrategyExample: strategy = {
@@ -499,7 +497,7 @@ export const advancedStrategyExample: strategy = {
 };
 
 // ============================================================================
-//test Suite
+// Test Suite
 // ============================================================================
 
 export function runCodeGenTests() {
@@ -531,15 +529,13 @@ export function runCodeGenTests() {
     console.log('Test 3: Code generation');
     try {
         const { ast } = parser.parseAndValidate(exampleCodeGenStrategy);
-        const pythonGen = new PythonCodeGenerator();
+        const mt5Gen = new MT5CodeGenerator2();
         const jsGen = new JavaScriptCodeGenerator();
 
-        const pythonCode = pythonGen.generate(ast);
+        const pythonCode = mt5Gen.generate(ast);
         const jsCode = jsGen.generate(ast);
 
-        console.log(
-            `  ✓ Python code generated: ${pythonCode.length} characters`
-        );
+        console.log(`  ✓ MT5 code generated: ${pythonCode.length} characters`);
         console.log(
             `  ✓ JavaScript code generated: ${jsCode.length} characters`
         );

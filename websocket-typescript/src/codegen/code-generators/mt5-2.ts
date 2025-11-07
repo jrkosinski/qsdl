@@ -3,7 +3,6 @@
  */
 import { CodeGenerator } from '.';
 import {
-    ASTVisitor,
     StrategyNode,
     IndicatorNode,
     CandleNode,
@@ -23,13 +22,13 @@ import {
     CandleFieldRefNode,
 } from '../ast-node';
 import Handlebars from 'handlebars';
+import * as fs from 'fs';
 
 /**
  * MT5/MQL5 Code Generator
  * Generates Expert Advisor scripts for MetaTrader 5
  */
 export class MT5CodeGenerator2 extends CodeGenerator<string> {
-    private code: string[] = [];
     private indicatorHandles: Map<string, string> = new Map();
     private indicatorBuffers: Map<string, string> = new Map();
     private variables: Set<string> = new Set();
@@ -41,6 +40,13 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
         this.indicatorBuffers.clear();
         this.variables.clear();
 
+        //get the handlebars template together
+        const templateSource = fs.readFileSync(
+            './src/codegen/templates/mt5.hbs',
+            'utf8'
+        );
+        const template = Handlebars.compile(templateSource);
+
         //generate EA structure
         this.generateInputParameters(ast);
         this.generateGlobalVariables(ast);
@@ -49,7 +55,8 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
         this.generateOnTick(ast);
         this.generateHelperFunctions(ast);
 
-        return this.code.join('\n');
+        //put it all together
+        return template({ body: this.code.join('\n') });
     }
 
     //ACTIONS - 1 function to rule them
@@ -60,7 +67,7 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
 
     //RULES - LOGIC
 
-    private generateInputParameters(ast: StrategyNode): void {
+    private generateInputParameters(ast: StrategyNode) {
         this.code.push('//--- Input parameters');
 
         //extract all variables from the strategy
@@ -106,7 +113,7 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
         this.code.push('');
     }
 
-    private generateGlobalVariables(ast: StrategyNode): void {
+    private generateGlobalVariables(ast: StrategyNode) {
         this.code.push('//--- Global variables');
         this.code.push('CTrade trade;');
         this.code.push('CPositionInfo positionInfo;');
@@ -165,7 +172,7 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
         this.code.push('');
     }
 
-    private generateOnInit(ast: StrategyNode): void {
+    private generateOnInit(ast: StrategyNode) {
         this.code.push(
             '//+------------------------------------------------------------------+'
         );
@@ -199,7 +206,7 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
             (ds) => ds instanceof IndicatorNode
         ) as IndicatorNode[];
         for (const indicator of indicators) {
-            this.code.push(this.getIndent() + `//initialize ${indicator.id}`);
+            this.addCodeLine(`//initialize ${indicator.id}`);
             const handleName = this.indicatorHandles.get(indicator.id);
             const symbol = this.getSymbolString(indicator.symbol);
             const timeframe = this.getTimeframeString(indicator.timeframe);
@@ -208,26 +215,26 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
                 case 'sma':
                     const smaPeriod = indicator.params.get('period') || 20;
                     const smaShift = indicator.params.get('shift') || 0;
-                    const smaMethod = 'MODE_SMA';
+
                     const smaPrice = this.getPriceConstant(
                         (indicator.params.get('source') as string) || 'close'
                     );
                     this.code.push(
                         this.getIndent() +
-                            `${handleName} = iMA(${symbol}, ${timeframe}, ${smaPeriod}, ${smaShift}, ${smaMethod}, ${smaPrice});`
+                            `${handleName} = indicators_sma(${symbol}, ${timeframe}, ${smaPeriod}, ${smaShift}, ${smaPrice});`
                     );
                     break;
 
                 case 'ema':
                     const emaPeriod = indicator.params.get('period') || 20;
                     const emaShift = indicator.params.get('shift') || 0;
-                    const emaMethod = 'MODE_EMA';
+
                     const emaPrice = this.getPriceConstant(
                         (indicator.params.get('source') as string) || 'close'
                     );
                     this.code.push(
                         this.getIndent() +
-                            `${handleName} = iMA(${symbol}, ${timeframe}, ${emaPeriod}, ${emaShift}, ${emaMethod}, ${emaPrice});`
+                            `${handleName} = indicators_ema(${symbol}, ${timeframe}, ${emaPeriod}, ${emaShift}, ${emaPrice});`
                     );
                     break;
 
@@ -243,7 +250,7 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
                     );
                     this.code.push(
                         this.getIndent() +
-                            `${handleName} = iMACD(${symbol}, ${timeframe}, ${fastPeriod}, ${slowPeriod}, ${signalPeriod}, ${macdPrice});`
+                            `${handleName} = indicators_macd(${symbol}, ${timeframe}, ${fastPeriod}, ${slowPeriod}, ${signalPeriod}, ${macdPrice});`
                     );
                     break;
 
@@ -281,15 +288,15 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
             this.code.push(
                 this.getIndent() + `if(${handleName} == INVALID_HANDLE)`
             );
-            this.code.push(this.getIndent() + '{');
+            this.addCodeLine('{');
             this.increaseIndent();
             this.code.push(
                 this.getIndent() +
                     `Print("Failed to create ${indicator.id} indicator");`
             );
-            this.code.push(this.getIndent() + 'return(INIT_FAILED);');
+            this.addCodeLine('return(INIT_FAILED);');
             this.decreaseIndent();
-            this.code.push(this.getIndent() + '}');
+            this.addCodeLine('}');
             this.code.push('');
         }
 
@@ -326,13 +333,13 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
         }
 
         this.code.push('');
-        this.code.push(this.getIndent() + 'return(INIT_SUCCEEDED);');
+        this.addCodeLine('return(INIT_SUCCEEDED);');
         this.decreaseIndent();
         this.code.push('}');
         this.code.push('');
     }
 
-    private generateOnDeinit(): void {
+    private generateOnDeinit() {
         this.code.push(
             '//+------------------------------------------------------------------+'
         );
@@ -352,7 +359,7 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
                 this.getIndent() + `if(${handle} != INVALID_HANDLE)`
             );
             this.increaseIndent();
-            this.code.push(this.getIndent() + `IndicatorRelease(${handle});`);
+            this.addCodeLine(`IndicatorRelease(${handle});`);
             this.decreaseIndent();
         }
 
@@ -361,7 +368,7 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
         this.code.push('');
     }
 
-    private generateOnTick(ast: StrategyNode): void {
+    private generateOnTick(ast: StrategyNode) {
         this.code.push(
             '//+------------------------------------------------------------------+'
         );
@@ -376,11 +383,11 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
         this.increaseIndent();
 
         //check if trading is enabled
-        this.code.push(this.getIndent() + 'if(!EnableTrading) return;');
+        this.addCodeLine('if(!EnableTrading) return;');
         this.code.push('');
 
         //update indicator values
-        this.code.push(this.getIndent() + '//update indicator values');
+        this.addCodeLine('//update indicator values');
         const indicators = ast.dataSources.filter(
             (ds) => ds instanceof IndicatorNode
         ) as IndicatorNode[];
@@ -426,7 +433,7 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
         this.code.push('');
 
         //get current market prices
-        this.code.push(this.getIndent() + '//get current market data');
+        this.addCodeLine('//get current market data');
         this.code.push(
             this.getIndent() +
                 'double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);'
@@ -442,7 +449,7 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
         this.code.push('');
 
         //check position limits
-        this.code.push(this.getIndent() + '//check current position');
+        this.addCodeLine('//check current position');
         this.code.push(
             this.getIndent() +
                 'double currentPosition = GetCurrentPosition(_Symbol);'
@@ -450,14 +457,14 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
         this.code.push('');
 
         //evaluate rules
-        this.code.push(this.getIndent() + '//evaluate trading rules');
+        this.addCodeLine('//evaluate trading rules');
         for (let i = 0; i < ast.rules.length; i++) {
             const rule = ast.rules[i];
-            this.code.push(this.getIndent() + `//rule ${i + 1}`);
+            this.addCodeLine(`//rule ${i + 1}`);
             this.code.push(
                 this.getIndent() + 'if(' + rule.condition.accept(this) + ')'
             );
-            this.code.push(this.getIndent() + '{');
+            this.addCodeLine('{');
             this.increaseIndent();
 
             //execute then actions
@@ -469,12 +476,12 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
             }
 
             this.decreaseIndent();
-            this.code.push(this.getIndent() + '}');
+            this.addCodeLine('}');
 
             //handle else actions if present
             if (rule.elseActions && rule.elseActions.length > 0) {
-                this.code.push(this.getIndent() + 'else');
-                this.code.push(this.getIndent() + '{');
+                this.addCodeLine('else');
+                this.addCodeLine('{');
                 this.increaseIndent();
 
                 for (const actionId of rule.elseActions) {
@@ -485,7 +492,7 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
                 }
 
                 this.decreaseIndent();
-                this.code.push(this.getIndent() + '}');
+                this.addCodeLine('}');
             }
             this.code.push('');
         }
@@ -495,46 +502,27 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
         this.code.push('');
     }
 
-    private generateActionExecution(action: ActionNode): void {
-        this.code.push(this.getIndent() + `//execute action: ${action.id}`);
+    private generateActionExecution(action: ActionNode) {
+        const order = action.order;
+        const symbol = this.getSymbolString(order.symbol);
+        const quantity = order.quantity.accept(this);
 
-        if (action.order instanceof MarketOrderNode) {
-            const order = action.order;
-            const symbol = this.getSymbolString(order.symbol);
-            const quantity = order.quantity.accept(this);
+        this.addCodeLine(`//execute action: ${action.id}`);
+        this.addCodeLine(`OrderParams o;`);
+        this.addCodeLine(`o.symbol = "${symbol}";`);
+        this.addCodeLine(`o.type = "${order.type}";`);
+        this.addCodeLine(`o.side   = "${order.side}";`);
+        this.addCodeLine(`o.volume = ${quantity};`);
 
-            if (order.side === 'buy') {
-                this.code.push(
-                    this.getIndent() +
-                        `if(!trade.Buy(${quantity}, ${symbol})) Print("Buy order failed: ", trade.ResultRetcode());`
-                );
-            } else {
-                this.code.push(
-                    this.getIndent() +
-                        `if(!trade.Sell(${quantity}, ${symbol})) Print("Sell order failed: ", trade.ResultRetcode());`
-                );
-            }
-        } else if (action.order instanceof LimitOrderNode) {
-            const order = action.order;
-            const symbol = this.getSymbolString(order.symbol);
-            const quantity = order.quantity.accept(this);
+        if (order instanceof LimitOrderNode) {
             const price = order.limitPrice.accept(this);
-
-            if (order.side === 'buy') {
-                this.code.push(
-                    this.getIndent() +
-                        `if(!trade.BuyLimit(${quantity}, ${price}, ${symbol})) Print("Buy limit order failed: ", trade.ResultRetcode());`
-                );
-            } else {
-                this.code.push(
-                    this.getIndent() +
-                        `if(!trade.SellLimit(${quantity}, ${price}, ${symbol})) Print("Sell limit order failed: ", trade.ResultRetcode());`
-                );
-            }
+            this.addCodeLine(`o.limit_price = ${price};`);
         }
     }
 
-    private generateHelperFunctions(ast: StrategyNode): void {
+    private generateHelperFunctions(ast: StrategyNode) {
+        //TODO: add much of this to the hbs template
+
         //generate position checking function
         this.code.push(
             '//+------------------------------------------------------------------+'
@@ -548,7 +536,7 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
         this.code.push('double GetCurrentPosition(string symbol)');
         this.code.push('{');
         this.increaseIndent();
-        this.code.push(this.getIndent() + 'double totalVolume = 0;');
+        this.addCodeLine('double totalVolume = 0;');
         this.code.push(
             this.getIndent() + 'int totalPositions = PositionsTotal();'
         );
@@ -556,16 +544,16 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
         this.code.push(
             this.getIndent() + 'for(int i = 0; i < totalPositions; i++)'
         );
-        this.code.push(this.getIndent() + '{');
+        this.addCodeLine('{');
         this.increaseIndent();
-        this.code.push(this.getIndent() + 'if(positionInfo.SelectByIndex(i))');
-        this.code.push(this.getIndent() + '{');
+        this.addCodeLine('if(positionInfo.SelectByIndex(i))');
+        this.addCodeLine('{');
         this.increaseIndent();
         this.code.push(
             this.getIndent() +
                 'if(positionInfo.Symbol() == symbol && positionInfo.Magic() == MagicNumber)'
         );
-        this.code.push(this.getIndent() + '{');
+        this.addCodeLine('{');
         this.increaseIndent();
         this.code.push(
             this.getIndent() +
@@ -576,20 +564,20 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
             this.getIndent() + 'totalVolume += positionInfo.Volume();'
         );
         this.decreaseIndent();
-        this.code.push(this.getIndent() + 'else');
+        this.addCodeLine('else');
         this.increaseIndent();
         this.code.push(
             this.getIndent() + 'totalVolume -= positionInfo.Volume();'
         );
         this.decreaseIndent();
         this.decreaseIndent();
-        this.code.push(this.getIndent() + '}');
+        this.addCodeLine('}');
         this.decreaseIndent();
-        this.code.push(this.getIndent() + '}');
+        this.addCodeLine('}');
         this.decreaseIndent();
-        this.code.push(this.getIndent() + '}');
+        this.addCodeLine('}');
         this.code.push('');
-        this.code.push(this.getIndent() + 'return totalVolume;');
+        this.addCodeLine('return totalVolume;');
         this.decreaseIndent();
         this.code.push('}');
         this.code.push('');
@@ -624,22 +612,21 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
             const max = limit.max.accept(this);
             const min = limit.min.accept(this);
 
-            this.code.push(this.getIndent() + `if(symbol == ${symbol})`);
-            this.code.push(this.getIndent() + '{');
+            this.addCodeLine(`if(symbol == ${symbol})`);
+            this.addCodeLine('{');
             this.increaseIndent();
-            this.code.push(
-                this.getIndent() +
-                    `if(projectedPos > ${max} || projectedPos < ${min})`
+            this.addCodeLine(
+                `if(projectedPos > ${max} || projectedPos < ${min})`
             );
             this.increaseIndent();
-            this.code.push(this.getIndent() + 'return false;');
+            this.addCodeLine('return false;');
             this.decreaseIndent();
             this.decreaseIndent();
-            this.code.push(this.getIndent() + '}');
+            this.addCodeLine('}');
         }
 
         this.code.push('');
-        this.code.push(this.getIndent() + 'return true;');
+        this.addCodeLine('return true;');
         this.decreaseIndent();
         this.code.push('}');
     }
@@ -695,7 +682,7 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
         return priceMap[source] || 'PRICE_CLOSE';
     }
 
-    private extractVariables(ast: StrategyNode): void {
+    private extractVariables(ast: StrategyNode) {
         //extract from data sources
         for (const dataSource of ast.dataSources) {
             if (dataSource.symbol instanceof VariableNode) {
@@ -726,7 +713,7 @@ export class MT5CodeGenerator2 extends CodeGenerator<string> {
         }
     }
 
-    private extractVariablesFromExpression(expr: any): void {
+    private extractVariablesFromExpression(expr: any) {
         if (!expr) return;
 
         if (expr instanceof VariableNode) {

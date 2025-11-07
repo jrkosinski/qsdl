@@ -3,7 +3,7 @@
  */
 
 // ============================================================================
-//execution Context
+// Execution Context
 // ============================================================================
 
 export interface ExecutionContext {
@@ -44,7 +44,7 @@ export interface Position {
 }
 
 // ============================================================================
-//base AST Node
+// Base AST Node
 // ============================================================================
 
 export abstract class ASTNode {
@@ -96,7 +96,7 @@ export interface ValidationWarning {
 }
 
 // ============================================================================
-//expression Nodes (for numeric expressions)
+// Expression Nodes (for numeric expressions)
 // ============================================================================
 
 export abstract class ExpressionNode extends ASTNode {
@@ -309,7 +309,7 @@ export class CandleFieldRefNode extends ExpressionNode {
 }
 
 // ============================================================================
-//condition Nodes (for boolean logic)
+// Condition Nodes (for boolean logic)
 // ============================================================================
 
 export abstract class ConditionNode extends ASTNode {
@@ -457,7 +457,7 @@ export class CrossoverNode extends ConditionNode {
 }
 
 // ============================================================================
-//data Source Nodes
+// Data Source Nodes
 // ============================================================================
 
 export abstract class DataSourceNode extends ASTNode {
@@ -573,7 +573,7 @@ export class TimeframeNode extends ASTNode {
 }
 
 // ============================================================================
-//action Nodes
+// Action Nodes
 // ============================================================================
 
 export class ActionNode extends ASTNode {
@@ -663,7 +663,7 @@ export class LimitOrderNode extends OrderNode {
 }
 
 // ============================================================================
-//rule Nodes
+// Rule Nodes
 // ============================================================================
 
 export class RuleNode extends ASTNode {
@@ -724,7 +724,7 @@ export class RuleNode extends ASTNode {
 }
 
 // ============================================================================
-//position Management Nodes
+// Position Management Nodes
 // ============================================================================
 
 export class PositionLimitNode extends ASTNode {
@@ -761,7 +761,7 @@ export class PositionLimitNode extends ASTNode {
 }
 
 // ============================================================================
-//root Strategy Node
+// Root Strategy Node
 // ============================================================================
 
 export class StrategyNode extends ASTNode {
@@ -854,7 +854,7 @@ export class StrategyNode extends ASTNode {
 }
 
 // ============================================================================
-//visitor Pattern for AST Traversal
+// Visitor Pattern for AST Traversal
 // ============================================================================
 
 export interface ASTVisitor<T> {

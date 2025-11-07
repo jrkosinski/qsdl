@@ -7,9 +7,32 @@ CPositionInfo position;
 COrderInfo orderInfo;
 
 // ========================= BODY START =========================
-{{body}}
+{{{body}}}
 // ========================== BODY END ========================== 
 
+
+// ======================== INDICATORS ==========================
+
+
+int indicators_sma(string symbol, string timeframe, int period, int shift, string price)
+{
+    return iMA(symbol, timeframe, period, shift, MODE_SMA, price);
+}
+
+int indicators_ema(string symbol, string timeframe, int period, int shift, string price)
+{
+    return iMA(symbol, timeframe, period, shift, MODE_EMA, price);
+}
+
+int indicators_macd(string symbol, string timeframe, int fastPeriod, int slowPeriod, int signalPeriod, string price) 
+{
+    return iMACD(symbol, timeframe, fastPeriod, slowPeriod, signalPeriod, price);
+}
+
+// ====================== INDICATORS END ========================
+
+
+// ========================== ORDERS ============================
 struct OrderParams {
    string   symbol;
    string   type;          // "market", "limit", "stop", "stop_limit", etc.
@@ -148,3 +171,5 @@ bool ExecuteOrder(OrderParams &o)
    Print("Unknown order type: ", o.type);
    return false;
 }
+
+// ======================== ORDERS END ==========================

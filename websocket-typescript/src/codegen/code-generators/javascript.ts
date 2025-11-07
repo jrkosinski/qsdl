@@ -27,8 +27,6 @@ import {
  * JavaScript Code Generator
  */
 export class JavaScriptCodeGenerator extends CodeGenerator<string> {
-    private code: string[] = [];
-
     generate(ast: StrategyNode): string {
         this.code = [];
         this.indent = 0;
@@ -42,7 +40,7 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
         return this.code.join('\n');
     }
 
-    private generateHeader(): void {
+    private generateHeader() {
         this.code.push('/**');
         this.code.push(' * Generated Trading Strategy');
         this.code.push(' * Generated at: ' + new Date().toISOString());
@@ -88,41 +86,41 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
         return 'GeneratedStrategy';
     }
 
-    private generateConstructor(node: StrategyNode): void {
+    private generateConstructor(node: StrategyNode) {
         this.code.push(
             this.getIndent() + 'constructor(brokerApi, variables = {}) {'
         );
         this.increaseIndent();
-        this.code.push(this.getIndent() + 'this.broker = brokerApi;');
-        this.code.push(this.getIndent() + 'this.variables = variables;');
-        this.code.push(this.getIndent() + 'this.positions = {};');
-        this.code.push(this.getIndent() + 'this.indicatorCache = {};');
+        this.addCodeLine('this.broker = brokerApi;');
+        this.addCodeLine('this.variables = variables;');
+        this.addCodeLine('this.positions = {};');
+        this.addCodeLine('this.indicatorCache = {};');
 
         //position limits
-        this.code.push(this.getIndent() + 'this.positionLimits = {');
+        this.addCodeLine('this.positionLimits = {');
         this.increaseIndent();
         for (const limit of node.positionLimits) {
             const symbol =
                 limit.symbol instanceof VariableNode
                     ? `[this.variables['${limit.symbol.name}']]`
                     : `'${limit.symbol}'`;
-            this.code.push(this.getIndent() + `${symbol}: {`);
+            this.addCodeLine(`${symbol}: {`);
             this.increaseIndent();
             this.code.push(
                 this.getIndent() + `min: ${limit.min.accept(this)},`
             );
-            this.code.push(this.getIndent() + `max: ${limit.max.accept(this)}`);
+            this.addCodeLine(`max: ${limit.max.accept(this)}`);
             this.decreaseIndent();
-            this.code.push(this.getIndent() + '},');
+            this.addCodeLine('},');
         }
         this.decreaseIndent();
-        this.code.push(this.getIndent() + '};');
-        this.code.push(this.getIndent() + '}');
+        this.addCodeLine('};');
+        this.addCodeLine('}');
         this.code.push('');
         this.decreaseIndent();
     }
 
-    private generateIndicatorMethodsJS(node: StrategyNode): void {
+    private generateIndicatorMethodsJS(node: StrategyNode) {
         const indicators = node.dataSources.filter(
             (ds: any) => ds instanceof IndicatorNode
         ) as IndicatorNode[];
@@ -175,20 +173,20 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
             }
 
             this.decreaseIndent();
-            this.code.push(this.getIndent() + '}');
+            this.addCodeLine('}');
             this.code.push('');
         }
     }
 
-    private generateRuleEvaluationJS(node: StrategyNode): void {
-        this.code.push(this.getIndent() + 'evaluateRules(context) {');
+    private generateRuleEvaluationJS(node: StrategyNode) {
+        this.addCodeLine('evaluateRules(context) {');
         this.increaseIndent();
-        this.code.push(this.getIndent() + 'const actionsToExecute = [];');
+        this.addCodeLine('const actionsToExecute = [];');
         this.code.push('');
 
         for (let i = 0; i < node.rules.length; i++) {
             const rule = node.rules[i];
-            this.code.push(this.getIndent() + '//rule ' + (i + 1));
+            this.addCodeLine('//rule ' + (i + 1));
             this.code.push(
                 this.getIndent() + 'if (' + rule.condition.accept(this) + ') {'
             );
@@ -201,7 +199,7 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
             this.decreaseIndent();
 
             if (rule.elseActions && rule.elseActions.length > 0) {
-                this.code.push(this.getIndent() + '} else {');
+                this.addCodeLine('} else {');
                 this.increaseIndent();
                 for (const actionId of rule.elseActions) {
                     this.code.push(
@@ -211,24 +209,24 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
                 }
                 this.decreaseIndent();
             }
-            this.code.push(this.getIndent() + '}');
+            this.addCodeLine('}');
             this.code.push('');
         }
 
-        this.code.push(this.getIndent() + 'return actionsToExecute;');
+        this.addCodeLine('return actionsToExecute;');
         this.decreaseIndent();
-        this.code.push(this.getIndent() + '}');
+        this.addCodeLine('}');
         this.code.push('');
     }
 
-    private generateOrderMethodsJS(node: StrategyNode): void {
-        this.code.push(this.getIndent() + 'async executeAction(actionId) {');
+    private generateOrderMethodsJS(node: StrategyNode) {
+        this.addCodeLine('async executeAction(actionId) {');
         this.increaseIndent();
-        this.code.push(this.getIndent() + 'switch(actionId) {');
+        this.addCodeLine('switch(actionId) {');
         this.increaseIndent();
 
         for (const action of node.actions) {
-            this.code.push(this.getIndent() + `case '${action.id}':`);
+            this.addCodeLine(`case '${action.id}':`);
             this.increaseIndent();
             this.code.push(
                 this.getIndent() + 'return ' + action.order.accept(this) + ';'
@@ -236,24 +234,24 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
             this.decreaseIndent();
         }
 
-        this.code.push(this.getIndent() + 'default:');
+        this.addCodeLine('default:');
         this.increaseIndent();
-        this.code.push(this.getIndent() + 'return null;');
+        this.addCodeLine('return null;');
         this.decreaseIndent();
 
         this.decreaseIndent();
-        this.code.push(this.getIndent() + '}');
+        this.addCodeLine('}');
         this.decreaseIndent();
-        this.code.push(this.getIndent() + '}');
+        this.addCodeLine('}');
         this.code.push('');
     }
 
-    private generateExecuteMethodJS(node: StrategyNode): void {
-        this.code.push(this.getIndent() + 'async execute(marketData) {');
+    private generateExecuteMethodJS(node: StrategyNode) {
+        this.addCodeLine('async execute(marketData) {');
         this.increaseIndent();
 
         //calculate indicators
-        this.code.push(this.getIndent() + '//calculate indicators');
+        this.addCodeLine('//calculate indicators');
         const indicators = node.dataSources.filter(
             (ds: any) => ds instanceof IndicatorNode
         ) as IndicatorNode[];
@@ -265,36 +263,36 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
         }
 
         this.code.push('');
-        this.code.push(this.getIndent() + '//build execution context');
-        this.code.push(this.getIndent() + 'const context = {');
+        this.addCodeLine('//build execution context');
+        this.addCodeLine('const context = {');
         this.increaseIndent();
         this.code.push(
             this.getIndent() + 'indicatorValues: this.indicatorCache,'
         );
-        this.code.push(this.getIndent() + 'positions: this.positions,');
-        this.code.push(this.getIndent() + 'variables: this.variables,');
-        this.code.push(this.getIndent() + 'currentCandles: marketData');
+        this.addCodeLine('positions: this.positions,');
+        this.addCodeLine('variables: this.variables,');
+        this.addCodeLine('currentCandles: marketData');
         this.decreaseIndent();
-        this.code.push(this.getIndent() + '};');
+        this.addCodeLine('};');
 
         this.code.push('');
-        this.code.push(this.getIndent() + '//evaluate rules');
+        this.addCodeLine('//evaluate rules');
         this.code.push(
             this.getIndent() + 'const actions = this.evaluateRules(context);'
         );
 
         this.code.push('');
-        this.code.push(this.getIndent() + '//execute actions');
-        this.code.push(this.getIndent() + 'for (const actionId of actions) {');
+        this.addCodeLine('//execute actions');
+        this.addCodeLine('for (const actionId of actions) {');
         this.increaseIndent();
         this.code.push(
             this.getIndent() + 'await this.executeAction(actionId);'
         );
         this.decreaseIndent();
-        this.code.push(this.getIndent() + '}');
+        this.addCodeLine('}');
 
         this.decreaseIndent();
-        this.code.push(this.getIndent() + '}');
+        this.addCodeLine('}');
     }
 
     //visitor implementations

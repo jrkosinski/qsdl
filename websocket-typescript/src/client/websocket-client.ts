@@ -60,7 +60,7 @@ export class WebsocketClient {
         });
     }
 
-    public send(data: string | Buffer): void {
+    public send(data: string | Buffer) {
         if (
             this._ws &&
             this._isConnected &&
@@ -74,11 +74,11 @@ export class WebsocketClient {
         }
     }
 
-    public onMessage(handler: (data: string) => void): void {
+    public onMessage(handler: (data: string) => void) {
         this._messageHandlers.push(handler);
     }
 
-    public disconnect(): void {
+    public disconnect() {
         this._shouldReconnect = false;
         if (this._ws) {
             this._ws.close();
@@ -95,7 +95,7 @@ export class WebsocketClient {
         return this._reconnectAttempts;
     }
 
-    private _handleMessage(data: Buffer): void {
+    private _handleMessage(data: Buffer) {
         let message = data.toString();
         this._logger.debug(`Client received: ${message}`);
 
@@ -109,7 +109,7 @@ export class WebsocketClient {
         });
     }
 
-    private _handleDisconnect(): void {
+    private _handleDisconnect() {
         if (
             this._shouldReconnect &&
             this._config.reconnect &&

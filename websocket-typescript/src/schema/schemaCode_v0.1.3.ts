@@ -31,7 +31,7 @@ Position sizing:
 */
 
 // ============================================================================
-//iNDICATOR REGISTRY - Defines all available indicators and their signatures
+// INDICATOR REGISTRY - Defines all available indicators and their signatures
 // ============================================================================
 
 /**
@@ -252,7 +252,7 @@ const INDICATOR_REGISTRY: indicator_registry = {
 };
 
 // ============================================================================
-//dATA SOURCE DEFINITIONS
+// DATA SOURCE DEFINITIONS
 // ============================================================================
 
 /**
@@ -295,7 +295,7 @@ export interface data_indicator extends data_source {
 }
 
 // ============================================================================
-//vALUE REFERENCES - How to reference indicator outputs and candle values
+// VALUE REFERENCES - How to reference indicator outputs and candle values
 // ============================================================================
 
 export type string_value = string | string_variable;
@@ -348,7 +348,7 @@ export type numeric_expression =
     | candle_field_ref;
 
 // ============================================================================
-//oPERATIONS AND CONDITIONS
+// OPERATIONS AND CONDITIONS
 // ============================================================================
 
 export interface comparison {
@@ -371,7 +371,7 @@ export interface condition {
 }
 
 // ============================================================================
-//aCTIONS AND RULES
+// ACTIONS AND RULES
 // ============================================================================
 
 /**
@@ -404,7 +404,7 @@ export interface rule {
 }
 
 // ============================================================================
-//MAIN STRATEGY export interface
+// MAIN STRATEGY export interface
 // ============================================================================
 
 export interface strategy {
@@ -418,7 +418,7 @@ export interface strategy {
 }
 
 // ============================================================================
-//oRDERS (keeping your existing order definitions)
+// ORDERS (keeping your existing order definitions)
 // ============================================================================
 
 export interface base_order {

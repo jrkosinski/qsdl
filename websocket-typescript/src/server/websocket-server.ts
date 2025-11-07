@@ -116,7 +116,7 @@ class WebsocketUserIO implements IUserIO {
         this._sendMessageToClient(MessageType.message, message);
     }
 
-    private _handleMessage(ws: WebSocket, data: Buffer): void {
+    private _handleMessage(ws: WebSocket, data: Buffer) {
         const message = data.toString();
         this._logger.info('Server received:' + message);
 
@@ -127,11 +127,11 @@ class WebsocketUserIO implements IUserIO {
         }
     }
 
-    private _sendMessageToClient(type: string, text: string): void {
+    private _sendMessageToClient(type: string, text: string) {
         this._sendToClient({ type, text });
     }
 
-    private _sendToClient(data: any): void {
+    private _sendToClient(data: any) {
         if (this._ws.readyState === WebSocket.OPEN) {
             this._logger.debug('Sending: ' + JSON.stringify(data));
             this._ws.send(JSON.stringify(data));
@@ -244,7 +244,7 @@ export class WebsocketConversationServer {
         }
     }
 
-    private _broadcast(data: string | Buffer): void {
+    private _broadcast(data: string | Buffer) {
         this._clients.forEach((client) => {
             if (client.ws.readyState === WebSocket.OPEN) {
                 client.ws.send(data);
@@ -252,14 +252,14 @@ export class WebsocketConversationServer {
         });
     }
 
-    private _sendToClient(ws: WebSocket, data: string | Buffer): void {
+    private _sendToClient(ws: WebSocket, data: string | Buffer) {
         if (ws.readyState === WebSocket.OPEN) {
             this._logger.debug(`Sending data to client: ${data}`);
             ws.send(data);
         }
     }
 
-    private _stop(): void {
+    private _stop() {
         if (this._wss) {
             this._clients.forEach((client) => {
                 client.ws.close();

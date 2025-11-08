@@ -1,5 +1,5 @@
 export const schema = {
-    version: '0.1.1',
+    version: '0.1.2',
     schema: {
         $schema: 'http://json-schema.org/draft-07/schema#',
         title: 'trading_strategy_schema',

@@ -34,6 +34,6 @@ app.listen(PORT, () => {
         `Open your browser to http://localhost:${PORT} to access the WebSocket client`
     );
     console.log(
-        `Make sure the WebSocket server is running on ws://${SERVER_DOMAIN}:1077`
+        `Make sure the WebSocket server is running on ws://${SERVER_DOMAIN}:9000`
     );
 });

@@ -358,7 +358,7 @@ interface comparison {
 }
 
 interface operation {
-    operator: '+' | '*' | '-' | '/' | '%';
+    operator: '+' | '*' | '-' | '/' | 'mod' | 'modulo' | 'pct' | 'percent';
     operandA: numeric_expression;
     operandB: numeric_expression;
 }

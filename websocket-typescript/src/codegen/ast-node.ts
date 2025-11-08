@@ -426,7 +426,7 @@ export class CrossoverNode extends ConditionNode {
         const current1 = this.series1.evaluate(context);
         const current2 = this.series2.evaluate(context);
 
-        //tODO: Implement proper crossover detection with historical values
+        //TODO: Implement proper crossover detection with historical values
         if (this.direction === 'above') {
             return current1 > current2;
         } else {
@@ -499,7 +499,7 @@ export class IndicatorNode extends DataSourceNode {
             };
         }
 
-        //tODO: Validate parameters against indicator definition
+        //TODO: Validate parameters against indicator definition
 
         return { valid: true, errors: [], warnings: [] };
     }

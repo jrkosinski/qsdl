@@ -164,7 +164,7 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
                 default:
                     this.code.push(
                         this.getIndent() +
-                            '//tODO: Implement ' +
+                            '//TODO: Implement ' +
                             indicator.indicatorType
                     );
                     this.code.push(

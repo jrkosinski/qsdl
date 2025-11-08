@@ -281,7 +281,7 @@ export class MT5CodeGenerator extends CodeGenerator<string> {
                 default:
                     this.code.push(
                         this.getIndent() +
-                            `//tODO: Initialize ${indicator.indicatorType}`
+                            `//TODO: Initialize ${indicator.indicatorType}`
                     );
             }
 

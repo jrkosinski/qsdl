@@ -75,6 +75,16 @@
                 border-radius: 4px;
                 font-size: 14px;
             }
+            textarea {
+                width: calc(100% - 22px);
+                padding: 10px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                font-size: 14px;
+                min-height: 60px;
+                resize: vertical;
+                font-family: Arial, sans-serif;
+            }
             .messages {
                 background-color: #f8f9fa;
                 border: 1px solid #ddd;
@@ -118,16 +128,21 @@
 
             <div class="message-area">
                 <div id="messagePrompt"></div>
-                <input
-                    type="text"
+                <textarea
                     id="messageInput"
                     placeholder="Type a message..."
                     disabled
-                />
+                    rows="3"
+                ></textarea>
                 <button id="sendBtn" class="send-btn" disabled>Send</button>
             </div>
 
             <div class="messages" id="messages"></div>
+            <br />
+            <div id="divQsdl"></div>
+            <br />
+            <div id="divCode"></div>
+            <br />
         </div>
 
         <script>
@@ -141,6 +156,8 @@
             const sendBtn = document.getElementById('sendBtn');
             const promptDiv = document.getElementById('messagePrompt');
             const messagesDiv = document.getElementById('messages');
+            const qsdlDiv = document.getElementById('divQsdl');
+            const codeDiv = document.getElementById('divCode');
 
             function isJson(s) {
                 s = s?.trim() || '';
@@ -151,37 +168,56 @@
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `message ${type}`;
                 let messageText = text;
-                let handled = false;
 
                 if (isJson(text)) {
-                    console.log('is json');
                     const jsonMsg = JSON.parse(text);
 
                     if (jsonMsg.text) {
-                        console.log('writing message text..');
                         messageText = jsonMsg.text;
                         promptDiv.innerText =
                             jsonMsg.type + ': ' + jsonMsg.text;
+                        showMessage(messageText, type);
                     } else {
-                        handled = false;
-                        messageDiv.textContent = messageText;
-                        messagesDiv.appendChild(messageDiv);
-                        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                        addQsdlDownloadLink(
+                            jsonMsg,
+                            `${jsonMsg.name.replaceAll(' ', '_')}.json`
+                        );
+                        showMessage('QSDL AVAILABLE FOR DOWNLOAD', type);
                     }
-                }
+                } else {
+                    const prefix = 'GENERATED-CODE:';
+                    if (messageText.startsWith(prefix)) {
+                        const code = messageText.substring(prefix.length);
+                        addCodeDownloadLink(code, 'code.mt5');
+                        showMessage('MT5 CODE AVAILABLE FOR DOWNLOAD', type);
+                    }
 
-                console.log('handled=', handled);
-                if (!handled) {
-                    console.log('writing msg');
-                    messageDiv.textContent = messageText;
-                    messagesDiv.appendChild(messageDiv);
-                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                    showMessage(messageText, type);
                 }
+            }
+
+            function showMessage(text, type) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${type}`;
+
+                messageDiv.textContent = text;
+                messagesDiv.appendChild(messageDiv);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
             }
 
             function updateStatus(status, className) {
                 statusDiv.textContent = status;
                 statusDiv.className = `status ${className}`;
+            }
+
+            function disableStartBtn() {
+                startBtn.disabled = true;
+                startBtn.className = 'disconnected';
+            }
+
+            function enableStartBtn() {
+                startBtn.disabled = false;
+                startBtn.className = 'connect-btn';
             }
 
             function start() {
@@ -194,7 +230,7 @@
                     ws.onopen = () => {
                         updateStatus('Connected', 'connected');
                         addMessage('Connected to server', 'system');
-                        startBtn.disabled = true;
+                        disableStartBtn();
                         resetBtn.disabled = false;
                         messageInput.disabled = false;
                         sendBtn.disabled = false;
@@ -217,7 +253,7 @@
                             })`,
                             'system'
                         );
-                        startBtn.disabled = false;
+                        enableStartBtn();
                         resetBtn.disabled = true;
                         messageInput.disabled = true;
                         sendBtn.disabled = true;
@@ -234,6 +270,18 @@
                     ws.close();
                     start();
                 }
+                removeQsdlDownloadLink();
+                removeCodeDownloadLink();
+            }
+
+            function removeQsdlDownloadLink() {
+                const link = document.getElementById('hrefDownloadQsdl');
+                if (link) qsdlDiv.removeChild(link);
+            }
+
+            function removeCodeDownloadLink() {
+                const link = document.getElementById('hrefDownloadCode');
+                if (link) codeDiv.removeChild(link);
             }
 
             function sendMessage() {
@@ -245,11 +293,56 @@
                 }
             }
 
+            function addQsdlDownloadLink(qsdl, filename) {
+                removeQsdlDownloadLink();
+
+                addDownloadLink(
+                    qsdlDiv,
+                    'hrefDownloadQsdl',
+                    'Download QSDL',
+                    JSON.stringify(qsdl, null, 4),
+                    filename
+                );
+            }
+
+            function addCodeDownloadLink(code, filename) {
+                removeCodeDownloadLink();
+
+                addDownloadLink(
+                    codeDiv,
+                    'hrefDownloadCode',
+                    'Download MT5 Code',
+                    code,
+                    filename
+                );
+            }
+
+            function addDownloadLink(div, linkId, linkText, content, filename) {
+                //create a Blob object from the text content
+                const blob = new Blob([content], {
+                    type: 'text/plain',
+                });
+
+                //create a URL for the Blob
+                const url = URL.createObjectURL(blob);
+
+                //create a temporary anchor element
+                const a = document.createElement('a');
+                a.id = linkId;
+                a.href = url;
+                a.download = filename;
+                a.innerText = linkText;
+
+                //programmatically click the anchor to trigger download
+                div.appendChild(a);
+            }
+
             startBtn.addEventListener('click', start);
             resetBtn.addEventListener('click', reset);
             sendBtn.addEventListener('click', sendMessage);
             messageInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
                     sendMessage();
                 }
             });

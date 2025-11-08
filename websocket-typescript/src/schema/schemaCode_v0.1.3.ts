@@ -8,26 +8,56 @@ This is an export interface definition for strategy. strategy should be able to 
 These are only for trading forex, stocks, and futures; no complex derivatives. 
 
 The end result of a strategy is a chunk of JSON that has all of the necessary information for defining how a specific trading strategy works, with no ambiguity. 
+*/
 
-//DOING: (MED) parameterize symbols, indicator parameters, etc. 
+//DOING: (MED) parameterize symbols, indicator parameters, etc.
 //TODO: (EASY) order amounts should be formulae
 //TODO: (MED) indicators library
-//TODO: (HARD) state management 
-//TODO: (HARD) error handling? 
-//TODO: (MED) time constraints 
+//TODO: (HARD) state management
+//TODO: (HARD) error handling?
+//TODO: (MED) time constraints
 //TODO: (MED) way to specify candle relationships
-//TODO: (HARD) selective indicator library 
+//TODO: (HARD) selective indicator library
 //TODO: (EASY) handling of multiple symbols (just verify)
 //TODO: (EASY) dynamic position size expressions (notably: a way to indicate "current size of position")
 //TODO: (?) is another validation pass needed, to make sure that indicator_id s and outputs/inputs names are valid?
 //TODO: (?) are known good examples of indicators needed to feed to the LLM?
-//TODO: (HARD) management of trailing stops 
+//TODO: (HARD) management of trailing stops
 
-//TODO: 
-Position sizing: 
-1. a constant passed in as variable 
-2. a percentage of portfolio
-3. a risk% based on trailing stop-loss order
+//TODO:
+//Position sizing:
+//1. a constant passed in as variable
+//2. a percentage of portfolio
+//3. a risk% based on trailing stop-loss order
+
+//PROMPT TO CONVERT TO SCHEMA:
+/*
+This is an interface definition for IStrategy. IStrategy should be able to represent a wide array and variety of trading strategies. Its main components are: 
+[1] data: these are data indicators (e.g. a moving average or more complex indicator) that can be named and have multiple or single outputs, or simple candles that give price, volume, timestamp. These data sources can be used in calculations, expressions, triggers, etc. 
+[2] actions: these are (currently at least) orders only - orders to place, and how to place them, types of orders, etc. These are used in rules. 
+[3] position_limits: these define how to manage a position (max and min sizes, etc.) 
+[4] rules: this is the real meat of the strategy. These are logical rules that define how to use the data and actions that are defined, to execute a strategy. 
+These are only for trading forex, stocks, and futures; no complex derivatives. 
+The end result of a strategy is a chunk of JSON that has all of the necessary information for defining how a specific trading strategy works, with no ambiguity.  Can you convert this into a json schema that essentially does the same things? It should keep integrity of ids as well - like if a portion of the json refers to an "action id", then it should be verified that it points to a valid action id
+*/
+
+//INITIAL PROMPT TO ANTHROPIC TO PARSE NL:
+/*
+I'm going to give you a schema for a json document. 
+And an equivalent definition of IStrategy in typescript.
+And a text description of a trading strategy. 
+I would like you to convert the text description into a chunk of json that satisfies the schema. 
+If there are any questions or things that need clarification (information missing), then ask before generating the json. 
+But preface all of your responses that are questions with a 'Q:'. Ask one question at a time, or maximum two if they are related. 
+Your job is to finally generate the json, so don't ask questions if the answers aren't necessary for generating the json 
+(e.g. no need to ask questions about things that aren't directly reflected in the json schema). 
+Do not discuss or answer things that are not directly about the trading strategy to be generated. 
+When you send me json, send me nothing but json (no text explanation accompanying it). 
+If not sending JSON, then always preface your response with 'Q:'
+The customer might want certain values to be a variable instead of a hard-coded value. For example, the symbol to trade. 
+The given schema allows for that, in the format { var: '$VARNAME' }. Please make variable names all capitals and preface 
+them with $. No need to ask customers what variable names to use; choose ones that make sense to you. 
+When you generate the final json document, give it a title and a description that make sense to you.
 */
 
 // ============================================================================

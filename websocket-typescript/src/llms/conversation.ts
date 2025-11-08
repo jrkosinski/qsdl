@@ -28,11 +28,13 @@
  * - Extensible input/output module interface for custom UI implementations
  */
 
-import { schema } from '../schema/schema_v0.1.1';
+const SCHEMA_VERSION = '0.1.3';
+import { schema } from '../schema/schema_v0.1.3';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import Anthropic from '@anthropic-ai/sdk';
 import { Logger } from '../util/logger';
+import * as fs from 'fs';
 
 /**
  * Interface for handling user input/output during the conversation.
@@ -61,7 +63,22 @@ export interface IUserIO {
 
 const SCHEMA_FAIL_MAX_RETRIES = 3;
 const MAX_QUESTION_LOOP_COUNT = 10;
-const INITIAL_SYSTEM_PROMPT = `I'm going to give you a schema for a json document. And a text description of a trading strategy. I would like you to convert the text description into a chunk of json that satisfies the schema. If there are any questions or things that need clarification (information missing), then ask before generating the json. But preface all of your responses that are questions with a 'Q:'. Ask one question at a time, or maximum two if they are related. Your job is to finally generate the json, so don't ask questions if the answers aren't necessary for generating the json (e.g. no need to ask questions about things that aren't directly reflected in the json schema). Do not discuss or answer things that are not directly about the trading strategy to be generated. When you send me json, send me nothing but json (no text explanation accompanying it). If not sending JSON, then always preface your response with 'Q:'`;
+//const INITIAL_SYSTEM_PROMPT = `I'm going to give you a schema for a json document. And a text description of a trading strategy. I would like you to convert the text description into a chunk of json that satisfies the schema. If there are any questions or things that need clarification (information missing), then ask before generating the json. But preface all of your responses that are questions with a 'Q:'. Ask one question at a time, or maximum two if they are related. Your job is to finally generate the json, so don't ask questions if the answers aren't necessary for generating the json (e.g. no need to ask questions about things that aren't directly reflected in the json schema). Do not discuss or answer things that are not directly about the trading strategy to be generated. When you send me json, send me nothing but json (no text explanation accompanying it). If not sending JSON, then always preface your response with 'Q:'`;
+const INITIAL_SYSTEM_PROMPT = `I'm going to give you a schema for a json document. 
+And an equivalent definition of IStrategy in typescript.
+And a text description of a trading strategy. 
+I would like you to convert the text description into a chunk of json that satisfies the schema. 
+If there are any questions or things that need clarification (information missing), then ask before generating the json. 
+But preface all of your responses that are questions with a 'Q:'. Ask one question at a time, or maximum two if they are related. 
+Your job is to finally generate the json, so don't ask questions if the answers aren't necessary for generating the json 
+(e.g. no need to ask questions about things that aren't directly reflected in the json schema). 
+Do not discuss or answer things that are not directly about the trading strategy to be generated. 
+When you send me json, send me nothing but json (no text explanation accompanying it). 
+If not sending JSON, then always preface your response with 'Q:'
+The customer might want certain values to be a variable instead of a hard-coded value. For example, the symbol to trade. 
+The given schema allows for that, in the format { var: '$VARNAME' }. Please make variable names all capitals and preface 
+them with $. No need to ask customers what variable names to use; choose ones that make sense to you. 
+When you generate the final json document, give it a title and a description that make sense to you.`;
 const ANTHROPIC_LLM_MODEL = 'claude-sonnet-4-5-20250929';
 const DEFAULT_MAX_TOKENS = 4096;
 const CONSOLE_LOGGING_ENABLED = false;
@@ -96,6 +113,7 @@ export class AnthropicConversation {
     private _logger: Logger = new Logger('ANTHC');
     private _strategyDescription: string = '';
     private _pendingPrompt: string = '';
+    private _typescriptInterfaceContent: string;
 
     /**
      * Creates a new AnthropicConversation instance.
@@ -104,6 +122,9 @@ export class AnthropicConversation {
      */
     constructor(inputModule: IUserIO) {
         this._inputModule = inputModule;
+        this._typescriptInterfaceContent = fs
+            .readFileSync(`./src/schema/schemaCode_v${SCHEMA_VERSION}.ts`)
+            .toString();
         if (!inputModule) throw new Error('input module is required');
         this._api = new Anthropic({
             apiKey: process.env.ANTHROPIC_API_KEY,
@@ -332,6 +353,15 @@ export class AnthropicConversation {
                 type: 'text',
                 text: `Here's the JSON schema:\n${JSON.stringify(
                     schema,
+                    null,
+                    2
+                )}`,
+                cache_control: { type: 'ephemeral' }, //cache the schema
+            },
+            {
+                type: 'text',
+                text: `Here's the JSON schema:\n${JSON.stringify(
+                    this._typescriptInterfaceContent,
                     null,
                     2
                 )}`,

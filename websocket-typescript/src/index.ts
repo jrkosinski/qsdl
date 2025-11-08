@@ -66,9 +66,9 @@ const inputModule: IUserIO = {
 async function main() {
     console.log('Application started successfully');
 
-    const TEST_WSS_SERVER = false;
+    const TEST_WSS_SERVER = true;
     const TEST_WSS_CLIENT = false;
-    const TEST_CODE_GEN = true;
+    const TEST_CODE_GEN = false;
 
     if (TEST_WSS_SERVER) {
         //testSchemaValidation();

@@ -4,6 +4,8 @@ import { IncomingMessage } from 'http';
 import { AnthropicConversation, IUserIO } from '../llms/conversation';
 import { randomBytes } from 'crypto';
 import { Logger } from '../util/logger';
+import { MT5CodeGenerator } from '../codegen/code-generators';
+import { createStrategyParser } from '../codegen/parser';
 
 const ENABLE_JWT_SECURITY = false;
 
@@ -128,7 +130,7 @@ class WebsocketUserIO implements IUserIO {
     }
 
     private _sendMessageToClient(type: string, text: string) {
-        this._sendToClient({ type, text });
+        if (text.length > 0) this._sendToClient({ type, text });
     }
 
     private _sendToClient(data: any) {
@@ -180,7 +182,17 @@ export class WebsocketConversationServer {
                 .startConversation()
                 .then((output) => {
                     if (output) {
+                        //send the qsdl first
                         this._sendToClient(ws, JSON.stringify(output));
+
+                        //generate the code here
+                        const parser = createStrategyParser();
+                        const { ast, validation } =
+                            parser.parseAndValidate(output);
+                        const code = new MT5CodeGenerator().generate(ast);
+
+                        //send the code down
+                        this._sendToClient(ws, `GENERATED-CODE:${code}`);
                     }
                 });
         });

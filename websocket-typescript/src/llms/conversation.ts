@@ -62,7 +62,8 @@ export interface IUserIO {
 }
 
 const SCHEMA_FAIL_MAX_RETRIES = 3;
-const MAX_QUESTION_LOOP_COUNT = 10;
+const MAX_QUESTION_LOOP_COUNT = 20;
+const MOCK_MODE: boolean = true;
 //const INITIAL_SYSTEM_PROMPT = `I'm going to give you a schema for a json document. And a text description of a trading strategy. I would like you to convert the text description into a chunk of json that satisfies the schema. If there are any questions or things that need clarification (information missing), then ask before generating the json. But preface all of your responses that are questions with a 'Q:'. Ask one question at a time, or maximum two if they are related. Your job is to finally generate the json, so don't ask questions if the answers aren't necessary for generating the json (e.g. no need to ask questions about things that aren't directly reflected in the json schema). Do not discuss or answer things that are not directly about the trading strategy to be generated. When you send me json, send me nothing but json (no text explanation accompanying it). If not sending JSON, then always preface your response with 'Q:'`;
 const INITIAL_SYSTEM_PROMPT = `I'm going to give you a schema for a json document. 
 And an equivalent definition of IStrategy in typescript.
@@ -82,6 +83,80 @@ When you generate the final json document, give it a title and a description tha
 const ANTHROPIC_LLM_MODEL = 'claude-sonnet-4-5-20250929';
 const DEFAULT_MAX_TOKENS = 4096;
 const CONSOLE_LOGGING_ENABLED = false;
+const MOCK_JSON: any = {
+    name: 'SMA Crossover Strategy',
+    description: '',
+    data: [
+        {
+            id: 'candle_1',
+            type: 'candle',
+            symbol: { var: '$SYMBOL' },
+            timeframe: { length: 1, period: 'day' },
+        },
+        {
+            id: 'sma_50',
+            type: 'indicator',
+            symbol: { var: '$SYMBOL' },
+            timeframe: { length: 1, period: 'day' },
+            indicator_type: 'sma',
+            params: { period: 50, source: 'close' },
+        },
+        {
+            id: 'sma_100',
+            type: 'indicator',
+            symbol: { var: '$SYMBOL' },
+            timeframe: { length: 1, period: 'day' },
+            indicator_type: 'sma',
+            params: { period: 100, source: 'close' },
+        },
+    ],
+    rules: [
+        {
+            if: {
+                expression: {
+                    operandA: { indicator_id: 'sma_50' },
+                    operandB: { indicator_id: 'sma_100' },
+                    operator: '>',
+                },
+            },
+            then: ['buy_signal'],
+        },
+        {
+            if: {
+                expression: {
+                    operandA: { indicator_id: 'sma_50' },
+                    operandB: { indicator_id: 'sma_100' },
+                    operator: '<=',
+                },
+            },
+            then: ['sell_signal'],
+        },
+    ],
+    actions: [
+        {
+            id: 'buy_signal',
+            order: {
+                type: 'market',
+                symbol: { var: '$SYMBOL' },
+                quantity: 100,
+                side: 'buy',
+                tif: 'gtc',
+            },
+        },
+        {
+            id: 'sell_signal',
+            order: {
+                type: 'market',
+                symbol: { var: '$SYMBOL' },
+                quantity: 100,
+                side: 'sell',
+                tif: 'gtc',
+            },
+        },
+    ],
+    position_limits: [{ symbol: { var: '$SYMBOL' }, max: 100, min: 0 }],
+    version: '0.1.3',
+};
 
 async function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
@@ -107,9 +182,11 @@ export class AnthropicConversation {
     private _anthropicModel: string = ANTHROPIC_LLM_MODEL;
     private _defaultMaxTokens: number = DEFAULT_MAX_TOKENS;
     private _conversationHistory: Message[] = [];
+    private _outMessageCount = 0;
+    private _inMessageCount = 0;
     private _questionCount: number = 0;
     private _inputModule: IUserIO;
-    private _mockMode: boolean = false;
+    private _mockMode: boolean = MOCK_MODE;
     private _logger: Logger = new Logger('ANTHC');
     private _strategyDescription: string = '';
     private _pendingPrompt: string = '';
@@ -166,10 +243,14 @@ export class AnthropicConversation {
             try {
                 //send user message
                 this._logger.debug('sending msg to user');
-                let assistantMessage = await this._sendMessage(
+                let assistantMessage = await this._sendToLLM(
                     userMessage,
                     'user'
                 );
+
+                if (this._mockMode && this._outMessageCount >= 3) {
+                    return MOCK_JSON;
+                }
 
                 //display assistant response
                 if (assistantMessage.startsWith('Q:')) {
@@ -179,7 +260,7 @@ export class AnthropicConversation {
                     );
 
                     if (maxQuestionsReached) {
-                        this._inputModule.onMessage(
+                        this._sendToUser(
                             'Maximum number of questions reached. We are having trouble completing this task; it might be too complex for us now. Exiting conversation. '
                         );
                         break;
@@ -239,7 +320,7 @@ export class AnthropicConversation {
      */
     private async _initialStartMessage(): Promise<void> {
         this._logger.debug('_initialStartMessage');
-        await this._inputModule.onMessage(
+        await this._sendToUser(
             'Starting multi-turn conversation with Anthropic API...'
         );
     }
@@ -311,7 +392,7 @@ export class AnthropicConversation {
             userMessage.toLowerCase() === 'exit' ||
             userMessage.toLowerCase() === 'quit'
         ) {
-            this._inputModule.onMessage('Exiting....');
+            this._sendToUser('Exiting....');
             await this._inputModule.onUserExit();
             return true;
         }
@@ -325,13 +406,19 @@ export class AnthropicConversation {
      * @param {string} message - The message content
      * @param {'user' | 'assistant'} role - The role of the message sender
      */
-    private async _sendMessage(
+    private async _sendToLLM(
         message: string,
         role: 'user' | 'assistant'
     ): Promise<any> {
         this._logger.debug(`_sendMessage ${role}, ${message}`);
         this._addConversationHistory(message, role);
         return await this._updateConversation();
+    }
+
+    private async _sendToUser(message: string) {
+        this._outMessageCount++;
+        this._logger.debug(`MESSAGE OUT: ${this._outMessageCount}`);
+        await this._inputModule.onMessage('Processing...');
     }
 
     /**
@@ -370,10 +457,23 @@ export class AnthropicConversation {
         ];
 
         //call Anthropic API with conversation history and initial system prompt
-        await this._inputModule.onMessage('Processing...');
+        await this._sendToUser('Processing...');
         if (this._mockMode) {
             await sleep(1000);
-            return 'Q: Mock response from api';
+
+            if (this._outMessageCount == 2)
+                return 'Q: Could you please provide more details about the trading strategy you want to create?';
+            else {
+                this._sendToUser(
+                    "This strategy uses two Simple Moving Averages (SMA) - a faster 50-period SMA and a slower 100-period SMA, both calculated on daily closing prices.\n\n**Buy Signal:** When the 50 SMA crosses above (becomes greater than) the 100 SMA, the strategy places a market order to buy 100 shares of the specified symbol with a Good-Till-Canceled (GTC) time-in-force.\n\n**Sell Signal:** When the 50 SMA crosses below or equals the 100 SMA, the strategy places a market order to sell 100 shares of the symbol (closing the position).\n\n**Long Only:** The position limits are set with a maximum of 100 shares and a minimum of 0, which prevents short positions. This ensures you never go short - you're either holding 100 shares long or flat (no position).\n\nThe symbol to trade is parameterized as a variable ($SYMBOL) so it can be specified when the strategy is deployed."
+                );
+
+                await sleep(500);
+
+                const output: any = MOCK_JSON;
+
+                return output;
+            }
         } else {
             const apiResponse = await this._api.messages.create({
                 model: this._anthropicModel,
@@ -410,21 +510,19 @@ export class AnthropicConversation {
     private async _handleJsonOutput(assistantMessage: string): Promise<any> {
         this._logger.debug(`_handleJsonOutput ${assistantMessage}`);
 
-        await this._inputModule.onMessage('Processing received json...');
+        await this._sendToUser('Processing received json...');
         let json = this._parseJsonSafe(assistantMessage.trim());
         let output: any = null;
 
         this._logger.debug(`processing json ${json}`);
 
         //here test against the schema
-        await this._inputModule.onMessage(
-            'Validating generated json against schema...'
-        );
+        await this._sendToUser('Validating generated json against schema...');
 
         for (let n = 0; n < this._schemaFailureMaxRetries; n++) {
             try {
                 if (this._validateJson(json)) {
-                    await this._inputModule.onMessage(
+                    await this._sendToUser(
                         '✅ Generated JSON is valid against the schema.'
                     );
                     output = json;
@@ -436,7 +534,7 @@ export class AnthropicConversation {
                     break;
                 } else {
                     //TODO: retry schema validation failures
-                    await this._inputModule.onMessage(
+                    await this._sendToUser(
                         `❌ Generated JSON is NOT valid against the schema. Attempting retry ${
                             n + 1
                         } of ${this._schemaFailureMaxRetries}...`
@@ -446,7 +544,7 @@ export class AnthropicConversation {
                     this._logger.debug(
                         `sending request to revalidate to the LLM...`
                     );
-                    const response = await this._sendMessage(
+                    const response = await this._sendToLLM(
                         'The JSON you provided does not validate against the schema. Please fix it and provide valid JSON.',
                         'user'
                     );
@@ -464,7 +562,7 @@ export class AnthropicConversation {
                 }
             } catch (err) {
                 //let claude know it needs to retry
-                await this._inputModule.onMessage(
+                await this._sendToUser(
                     `❌ Response is not valid JSON. Attempting retry ${
                         n + 1
                     } of ${this._schemaFailureMaxRetries}...`
@@ -484,12 +582,12 @@ export class AnthropicConversation {
     private async _finalConfirmation(output: any): Promise<boolean> {
         this._logger.debug('_finalConfirmation');
 
-        const response = await this._sendMessage(
+        const response = await this._sendToLLM(
             'Explain your understanding of this trading strategy back to me in words, so that I can confirm if you understood it. Do not prefix your response with Q:',
             'user'
         );
 
-        await this._inputModule.onMessage(response);
+        await this._sendToUser(response);
         const userResponse = await this._inputModule.getUserResponse(
             'Is this explanation correct and satisfactory? Type Y or N:'
         );

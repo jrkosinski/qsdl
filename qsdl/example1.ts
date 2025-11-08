@@ -7,6 +7,11 @@ when entering: use a limit order with the price 0.5% above the current price
 when exiting: use a market order and exit all at once 
 */
 
+enum CONSTANTS {
+    position_size = 'position_size',
+    portfolio_value = 'portfolio_value',
+}
+
 const example1: strategy = {
     data: [
         {

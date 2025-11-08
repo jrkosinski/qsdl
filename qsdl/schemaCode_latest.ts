@@ -1,5 +1,5 @@
 /*
-This is an interface definition for strategy. strategy should be able to represent a wide array and variety of trading strategies. Its main components are: 
+This is an export interface definition for strategy. strategy should be able to represent a wide array and variety of trading strategies. Its main components are: 
 [1] data: these are data indicators (e.g. a moving average or more complex indicator) that can be named and have multiple or single outputs, or simple candles that give price, volume, timestamp. These data sources can be used in calculations, expressions, triggers, etc. 
 [2] actions: these are (currently at least) orders only - orders to place, and how to place them, types of orders, etc. These are used in rules. 
 [3] position_limits: these define how to manage a position (max and min sizes, etc.) 
@@ -8,26 +8,56 @@ This is an interface definition for strategy. strategy should be able to represe
 These are only for trading forex, stocks, and futures; no complex derivatives. 
 
 The end result of a strategy is a chunk of JSON that has all of the necessary information for defining how a specific trading strategy works, with no ambiguity. 
+*/
 
-//DOING: (MED) parameterize symbols, indicator parameters, etc. 
+//DOING: (MED) parameterize symbols, indicator parameters, etc.
 //TODO: (EASY) order amounts should be formulae
 //TODO: (MED) indicators library
-//TODO: (HARD) state management 
-//TODO: (HARD) error handling? 
-//TODO: (MED) time constraints 
+//TODO: (HARD) state management
+//TODO: (HARD) error handling?
+//TODO: (MED) time constraints
 //TODO: (MED) way to specify candle relationships
-//TODO: (HARD) selective indicator library 
+//TODO: (HARD) selective indicator library
 //TODO: (EASY) handling of multiple symbols (just verify)
 //TODO: (EASY) dynamic position size expressions (notably: a way to indicate "current size of position")
 //TODO: (?) is another validation pass needed, to make sure that indicator_id s and outputs/inputs names are valid?
 //TODO: (?) are known good examples of indicators needed to feed to the LLM?
-//TODO: (HARD) management of trailing stops 
+//TODO: (HARD) management of trailing stops
 
-//TODO: 
-Position sizing: 
-1. a constant passed in as variable 
-2. a percentage of portfolio
-3. a risk% based on trailing stop-loss order
+//TODO:
+//Position sizing:
+//1. a constant passed in as variable
+//2. a percentage of portfolio
+//3. a risk% based on trailing stop-loss order
+
+//PROMPT TO CONVERT TO SCHEMA:
+/*
+This is an interface definition for IStrategy. IStrategy should be able to represent a wide array and variety of trading strategies. Its main components are: 
+[1] data: these are data indicators (e.g. a moving average or more complex indicator) that can be named and have multiple or single outputs, or simple candles that give price, volume, timestamp. These data sources can be used in calculations, expressions, triggers, etc. 
+[2] actions: these are (currently at least) orders only - orders to place, and how to place them, types of orders, etc. These are used in rules. 
+[3] position_limits: these define how to manage a position (max and min sizes, etc.) 
+[4] rules: this is the real meat of the strategy. These are logical rules that define how to use the data and actions that are defined, to execute a strategy. 
+These are only for trading forex, stocks, and futures; no complex derivatives. 
+The end result of a strategy is a chunk of JSON that has all of the necessary information for defining how a specific trading strategy works, with no ambiguity.  Can you convert this into a json schema that essentially does the same things? It should keep integrity of ids as well - like if a portion of the json refers to an "action id", then it should be verified that it points to a valid action id
+*/
+
+//INITIAL PROMPT TO ANTHROPIC TO PARSE NL:
+/*
+I'm going to give you a schema for a json document. 
+And an equivalent definition of IStrategy in typescript.
+And a text description of a trading strategy. 
+I would like you to convert the text description into a chunk of json that satisfies the schema. 
+If there are any questions or things that need clarification (information missing), then ask before generating the json. 
+But preface all of your responses that are questions with a 'Q:'. Ask one question at a time, or maximum two if they are related. 
+Your job is to finally generate the json, so don't ask questions if the answers aren't necessary for generating the json 
+(e.g. no need to ask questions about things that aren't directly reflected in the json schema). 
+Do not discuss or answer things that are not directly about the trading strategy to be generated. 
+When you send me json, send me nothing but json (no text explanation accompanying it). 
+If not sending JSON, then always preface your response with 'Q:'
+The customer might want certain values to be a variable instead of a hard-coded value. For example, the symbol to trade. 
+The given schema allows for that, in the format { var: '$VARNAME' }. Please make variable names all capitals and preface 
+them with $. No need to ask customers what variable names to use; choose ones that make sense to you. 
+When you generate the final json document, give it a title and a description that make sense to you.
 */
 
 // ============================================================================
@@ -37,21 +67,21 @@ Position sizing:
 /**
  * Describes an input parameter for an indicator
  */
-interface indicator_input {
+export interface indicator_input {
     name: string;
     type: 'number' | 'string' | 'source'; //source is for specifying OHLC field
     required: boolean;
     default_value?: number | string;
     description?: string;
-    min?: number; // for number types
-    max?: number; // for number types
-    allowed_values?: string[]; // for string enums like 'close', 'open', 'hl2', etc.
+    min?: number; //for number types
+    max?: number; //for number types
+    allowed_values?: string[]; //for string enums like 'close', 'open', 'hl2', etc.
 }
 
 /**
  * Describes an output from an indicator
  */
-interface indicator_output_definition {
+export interface indicator_output_definition {
     name: string;
     index: number;
     is_default?: boolean;
@@ -63,7 +93,7 @@ interface indicator_output_definition {
  * Indicator has: a type & a name
  * Indicator is: a list of inputs & outputs
  */
-interface indicator_definition {
+export interface indicator_definition {
     type: string; // 'sma', 'ema', 'macd', etc.
     display_name: string;
     description: string;
@@ -75,7 +105,7 @@ interface indicator_definition {
  * The complete registry of all available indicators
  * This would be provided as configuration/context to the system
  */
-interface indicator_registry {
+export interface indicator_registry {
     indicators: { [key: string]: indicator_definition };
 }
 
@@ -260,7 +290,7 @@ const INDICATOR_REGISTRY: indicator_registry = {
  * multiple or single parameters and outputs, or simple candles that give price, volume, timestamp.
  * These data sources can be used in calculations, expressions, triggers, etc.
  */
-interface data_source {
+export interface data_source {
     id: string;
     type: 'indicator' | 'candle';
     symbol: string_value;
@@ -272,14 +302,14 @@ interface data_source {
  * Defines an OHLCVT candle (OHLC + volume + timestamp).
  * When referenced in expressions, can use: .open, .high, .low, .close, .volume
  */
-interface data_candle extends data_source {
+export interface data_candle extends data_source {
     type: 'candle';
 }
 
 /**
  * Expresses a timeframe for candles/bars.
  */
-interface timeframe {
+export interface timeframe {
     length: number; //default 1, can't be zero
     period: 'second' | 'minute' | 'hour' | 'day' | 'month';
 }
@@ -288,34 +318,34 @@ interface timeframe {
  * Expresses a specific indicator instance with named parameters.
  * The params must match the indicator definition in the registry.
  */
-interface data_indicator extends data_source {
+export interface data_indicator extends data_source {
     type: 'indicator';
-    indicator_type: string; // Must match a key in the indicator registry
-    params: { [key: string]: number | string }; // Named parameters matching the registry definition
+    indicator_type: string; //Must match a key in the indicator registry
+    params: { [key: string]: number | string }; //named parameters matching the registry definition
 }
 
 // ============================================================================
 // VALUE REFERENCES - How to reference indicator outputs and candle values
 // ============================================================================
 
-type string_value = string | string_variable;
-type numeric_value = number | numeric_variable;
+export type string_value = string | string_variable;
+export type numeric_value = number | numeric_variable;
 
-interface string_variable {
+export interface string_variable {
     var: string;
 }
 
-interface numeric_variable {
+export interface numeric_variable {
     var: string;
 }
 
-interface string_ternary_expression {
+export interface string_ternary_expression {
     if: condition;
     then: string_value;
     else: string_value;
 }
 
-interface numeric_ternary_expression {
+export interface numeric_ternary_expression {
     if: condition;
     then: numeric_expression | numeric_ternary_expression;
     else: numeric_expression | numeric_ternary_expression;
@@ -324,24 +354,24 @@ interface numeric_ternary_expression {
 /**
  * Reference to a specific output from an indicator
  */
-interface indicator_output_ref {
-    indicator_id: string; // Must be valid indicator id from data sources
-    output?: string | number; // Can use name ('macd', 'signal') or index (0, 1)
-    // If omitted, defaults to first output (index 0)
+export interface indicator_output_ref {
+    indicator_id: string; //Must be valid indicator id from data sources
+    output?: string | number; //can use name ('macd', 'signal') or index (0, 1)
+    //if omitted, defaults to first output (index 0)
 }
 
 /**
  * Reference to a specific field from a candle
  */
-interface candle_field_ref {
-    candle_id: string; // Must be valid candle id from data sources
+export interface candle_field_ref {
+    candle_id: string; //Must be valid candle id from data sources
     field: 'open' | 'high' | 'low' | 'close' | 'volume' | 'timestamp';
 }
 
 /**
  * Numeric-only expression (for things like prices that must be numbers)
  */
-type numeric_expression =
+export type numeric_expression =
     | numeric_value
     | operation
     | indicator_output_ref
@@ -351,20 +381,20 @@ type numeric_expression =
 // OPERATIONS AND CONDITIONS
 // ============================================================================
 
-interface comparison {
+export interface comparison {
     operandA: numeric_expression;
     operandB: numeric_expression;
     operator: '<' | '>' | '<=' | '>=' | '==' | '!=';
 }
 
-interface operation {
+export interface operation {
     operator: '+' | '*' | '-' | '/' | 'mod' | 'modulo' | 'pct' | 'percent';
     operandA: numeric_expression;
     operandB: numeric_expression;
 }
 
-interface condition {
-    // Must have only one of 'expression', 'and', 'or'
+export interface condition {
+    //Must have only one of 'expression', 'and', 'or'
     expression?: comparison;
     and?: condition[] | comparison[];
     or?: condition[] | comparison[];
@@ -379,7 +409,7 @@ interface condition {
  * These are used in rules. In the future there might be a 'signal' action - one that gives a signal but doesn't
  * specify the placing of a specific order.
  */
-interface action {
+export interface action {
     id: string;
     order: stock_order;
 }
@@ -387,7 +417,7 @@ interface action {
 /**
  * Defines max and minimum position sizes.
  */
-interface position_limit {
+export interface position_limit {
     symbol: string_value;
     max: numeric_expression;
     min: numeric_expression;
@@ -397,245 +427,33 @@ interface position_limit {
  * This is the real meat of the strategy. These are logical rules that define how to use the data and actions
  * that are defined, to execute a strategy.
  */
-interface rule {
+export interface rule {
     if: condition;
-    then: string[]; // Action IDs to execute
-    else?: string[]; // Optional else actions
+    then: string[]; //action IDs to execute
+    else?: string[]; //optional else actions
 }
 
 // ============================================================================
-// MAIN STRATEGY INTERFACE
+// MAIN STRATEGY
 // ============================================================================
 
-interface strategy {
+export interface strategy {
     name?: string;
     description?: string;
-    default_symbol?: string; // Optional default symbol for data sources
-    data: data_source[]; // Must have length of at least one
-    rules: rule[]; // Must have length of at least one
-    actions: action[]; // Must have length of at least one
-    position_limits: position_limit[]; // Must have at least one
+    default_symbol?: string; //optional default symbol for data sources
+    data: data_source[]; //Must have length of at least one
+    rules: rule[]; //Must have length of at least one
+    actions: action[]; //Must have length of at least one
+    position_limits: position_limit[]; //Must have at least one
 }
 
 // ============================================================================
-// EXAMPLE STRATEGIES
+// ORDERS
 // ============================================================================
 
-const Example_SMA_Crossover: strategy = {
-    name: 'SMA Crossover',
-    description: 'Buy when fast SMA crosses above slow SMA',
-    default_symbol: 'ASL',
-    data: [
-        {
-            symbol: { var: '$sym1' },
-            id: 'fast_ma',
-            type: 'indicator',
-            indicator_type: 'sma',
-            timeframe: { period: 'day', length: 1 },
-            params: {
-                period: 50,
-                source: 'close',
-            },
-        } as data_indicator,
-        {
-            symbol: { var: '$sym1' },
-            id: 'slow_ma',
-            type: 'indicator',
-            indicator_type: 'sma',
-            timeframe: { period: 'day', length: 1 },
-            params: {
-                period: 200,
-                source: 'close',
-            },
-        } as data_indicator,
-        {
-            id: 'current_price',
-            type: 'candle',
-            timeframe: { period: 'day', length: 1 },
-        } as data_candle,
-        {
-            id: 'prev_price',
-            type: 'candle',
-            timeframe: { period: 'day', length: 1 },
-            offset: 1,
-        } as data_candle,
-    ],
-    actions: [
-        {
-            id: 'buy_asl',
-            order: {
-                type: 'market',
-                side: 'buy',
-                quantity: 100,
-                symbol: { var: '$sym1' },
-                tif: 'gtc',
-            },
-        },
-        {
-            id: 'sell_asl',
-            order: {
-                type: 'market',
-                side: 'sell',
-                quantity: 100,
-                symbol: { var: '$sym1' },
-                tif: 'gtc',
-            },
-        },
-    ],
-    position_limits: [
-        {
-            symbol: { var: '$sym1' },
-            max: 100,
-            min: 0,
-        },
-    ],
-    rules: [
-        {
-            if: {
-                and: [
-                    {
-                        // Fast MA > Slow MA
-                        operator: '>',
-                        operandA: {
-                            indicator_id: 'fast_ma',
-                            output: 'value', // Can use name
-                        },
-                        operandB: {
-                            indicator_id: 'slow_ma',
-                            output: 0, // Or can use index
-                        },
-                    } as comparison,
-                    {
-                        // Price above fast MA
-                        operator: '>',
-                        operandA: {
-                            candle_id: 'current_price',
-                            field: 'close',
-                        },
-                        operandB: {
-                            indicator_id: 'fast_ma',
-                            output: 'value',
-                        },
-                    } as comparison,
-                ],
-            },
-            then: ['buy_asl'],
-        },
-    ],
-};
-
-const Example_MACD_Strategy: strategy = {
-    name: 'MACD Histogram Cross',
-    description: 'Trade when MACD histogram crosses zero',
-    data: [
-        {
-            id: 'macd_indicator',
-            type: 'indicator',
-            indicator_type: 'macd',
-            symbol: 'SPY',
-            timeframe: { period: 'hour', length: 1 },
-            params: {
-                fast_period: 12,
-                slow_period: 26,
-                signal_period: 9,
-                source: 'close',
-            },
-        } as data_indicator,
-        {
-            id: 'macd_prev',
-            type: 'indicator',
-            indicator_type: 'macd',
-            symbol: 'SPY',
-            timeframe: { period: 'hour', length: 1 },
-            params: {
-                fast_period: 12,
-                slow_period: 26,
-                signal_period: 9,
-                source: 'close',
-            },
-            offset: 1,
-        } as data_indicator,
-    ],
-    actions: [
-        {
-            id: 'sell_spy',
-            order: {
-                type: 'market',
-                side: 'sell',
-                quantity: 10,
-                symbol: 'SPY',
-                tif: 'day',
-            },
-        },
-    ],
-    position_limits: [
-        {
-            symbol: 'SPY',
-            max: 10,
-            min: 0,
-        },
-    ],
-    rules: [
-        {
-            // Buy when histogram crosses above zero
-            if: {
-                and: [
-                    {
-                        // Current histogram > 0
-                        operator: '>',
-                        operandA: {
-                            indicator_id: 'macd_indicator',
-                            output: 'histogram', // Using named output
-                        },
-                        operandB: 0,
-                    } as comparison,
-                    {
-                        // Previous histogram <= 0
-                        operator: '<=',
-                        operandA: {
-                            indicator_id: 'macd_prev',
-                            output: 2, // Using index for histogram
-                        },
-                        operandB: 0,
-                    } as comparison,
-                ],
-            },
-            then: ['buy_spy'],
-        },
-        {
-            // Sell when histogram crosses below zero
-            if: {
-                and: [
-                    {
-                        operator: '<',
-                        operandA: {
-                            indicator_id: 'macd_indicator',
-                            output: 'histogram',
-                        },
-                        operandB: 0,
-                    } as comparison,
-                    {
-                        operator: '>=',
-                        operandA: {
-                            indicator_id: 'macd_prev',
-                            output: 'histogram',
-                        },
-                        operandB: 0,
-                    } as comparison,
-                ],
-            },
-            then: ['sell_spy'],
-        },
-    ],
-};
-
-// ============================================================================
-// ORDERS (keeping your existing order definitions)
-// ============================================================================
-
-interface base_order {
+export interface base_order {
     symbol: string_value;
-    quantity: numeric_expression; // Changed from number to allow expressions
+    quantity: numeric_expression; //changed from number to allow expressions
     side: 'buy' | 'sell';
     tif: 'day' | 'gtc' | 'ioc' | 'fok' | 'gtd' | 'ext';
     extended_hours?: boolean;
@@ -643,47 +461,47 @@ interface base_order {
     timestamp?: Date;
 }
 
-// Market
-interface market_order extends base_order {
+//Market
+export interface market_order extends base_order {
     type: 'market';
 }
 
-// Limit
-interface limit_order extends base_order {
+//limit
+export interface limit_order extends base_order {
     type: 'limit';
     limit_price: numeric_expression;
 }
 
-// Stop market
-interface stop_order extends base_order {
+//stop market
+export interface stop_order extends base_order {
     type: 'stop';
     stop_price: numeric_expression;
 }
 
-// Stop-limit
-interface stop_limit_order extends base_order {
+//stop-limit
+export interface stop_limit_order extends base_order {
     type: 'stop_limit';
     stop_price: numeric_expression;
     limit_price: numeric_expression;
 }
 
-// Trailing Stop
-interface trailing_stop_order extends base_order {
+//trailing Stop
+export interface trailing_stop_order extends base_order {
     type: 'trailing_stop';
-    trail_amount?: numeric_expression; // Dollar amount
-    trail_percent?: numeric_expression; // Percentage
+    trail_amount?: numeric_expression; //dollar amount
+    trail_percent?: numeric_expression; //percentage
 }
 
-// Trailing Stop-limit
-interface trailing_stop_limit_order extends base_order {
+//trailing Stop-limit
+export interface trailing_stop_limit_order extends base_order {
     type: 'trailing_stop_limit';
     trail_amount?: numeric_expression;
     trail_percent?: numeric_expression;
-    limit_offset: numeric_expression; // Offset from stop price for limit
+    limit_offset: numeric_expression; //offset from stop price for limit
 }
 
-// OCO
-interface oco_order extends base_order {
+//oCO
+export interface oco_order extends base_order {
     type: 'oco';
     orders: [
         limit_order | stop_order | stop_limit_order,
@@ -691,56 +509,56 @@ interface oco_order extends base_order {
     ];
 }
 
-// Bracket
-interface bracket_order extends base_order {
+//bracket
+export interface bracket_order extends base_order {
     type: 'bracket';
     entry_order: market_order | limit_order;
     profit_target: limit_order;
     stop_loss: stop_order | stop_limit_order;
 }
 
-// Iceberg
-interface iceberg_order extends base_order {
+//iceberg
+export interface iceberg_order extends base_order {
     type: 'iceberg';
     limit_price: numeric_expression;
-    display_quantity: numeric_expression; // Visible quantity
-    total_quantity: numeric_expression; // Total order size
+    display_quantity: numeric_expression; //visible quantity
+    total_quantity: numeric_expression; //total order size
 }
 
-// All or none
-interface aon_order extends base_order {
+//all or none
+export interface aon_order extends base_order {
     type: 'all_or_none';
     limit_price: numeric_expression;
 }
 
-// FOK
-interface fok_order extends base_order {
+//fOK
+export interface fok_order extends base_order {
     type: 'fill_or_kill';
     limit_price?: numeric_expression;
 }
 
-// IOC
-interface ioc_order extends base_order {
+//iOC
+export interface ioc_order extends base_order {
     type: 'immediate_or_cancel';
     limit_price?: numeric_expression;
 }
 
-// GTD
-interface gtd_order extends base_order {
+//gTD
+export interface gtd_order extends base_order {
     type: 'good_till_date';
     limit_price?: numeric_expression;
     expiration_date: Date;
 }
 
-interface pegged_order extends base_order {
+export interface pegged_order extends base_order {
     type: 'pegged';
     peg_type: 'midpoint' | 'primary' | 'market' | 'benchmark';
     limit_price?: numeric_expression;
     offset?: numeric_expression;
 }
 
-// Union type for all order types
-type stock_order =
+//union type for all order types
+export type stock_order =
     | market_order
     | limit_order
     | stop_order

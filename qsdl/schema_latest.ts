@@ -1,192 +1,331 @@
 export const schema = {
-    version: '0.1.1',
+    version: '0.1.3',
     schema: {
         $schema: 'http://json-schema.org/draft-07/schema#',
-        title: 'trading_strategy_schema',
+        $id: 'https://example.com/trading-strategy.schema.json',
+        title: 'Trading Strategy Schema',
         description:
-            'Schema for defining trading strategies for forex, stocks, and futures',
+            'Schema for defining trading strategies including data sources, indicators, rules, and actions',
         type: 'object',
-        $ref: '#/definitions/strategy',
-        definitions: {
-            strategy: {
-                type: 'object',
-                required: ['data', 'rules', 'actions', 'position_limits'],
-                properties: {
-                    data: {
-                        type: 'array',
-                        description: 'must have length of at least one',
-                        minItems: 1,
-                        items: {
-                            $ref: '#/definitions/data',
-                        },
-                    },
-                    rules: {
-                        type: 'array',
-                        description: 'must have length of at least one',
-                        minItems: 1,
-                        items: {
-                            $ref: '#/definitions/rule',
-                        },
-                    },
-                    actions: {
-                        type: 'array',
-                        description: 'must have length of at least one',
-                        minItems: 1,
-                        items: {
-                            $ref: '#/definitions/action',
-                        },
-                    },
-                    position_limits: {
-                        type: 'array',
-                        description: 'must have at least one',
-                        minItems: 1,
-                        items: {
-                            $ref: '#/definitions/position_limit',
-                        },
-                    },
-                },
+        required: ['data', 'rules', 'actions', 'position_limits'],
+        properties: {
+            name: {
+                type: 'string',
+                description: 'Optional name for the strategy',
+            },
+            description: {
+                type: 'string',
+                description: 'Optional description of the strategy',
+            },
+            default_symbol: {
+                type: 'string',
+                description: 'Optional default symbol for data sources',
             },
             data: {
-                type: 'object',
-                required: ['id', 'type', 'timeframe'],
-                properties: {
-                    id: {
-                        type: 'string',
-                    },
-                    type: {
-                        type: 'string',
-                        enum: ['indicator', 'candle', 'volume', 'time'],
-                    },
-                    timeframe: {
-                        $ref: '#/definitions/timeframe',
-                    },
-                    offset: {
-                        type: 'number',
-                    },
+                type: 'array',
+                description: 'Data sources including indicators and candles',
+                minItems: 1,
+                items: {
+                    $ref: '#/definitions/data_source',
                 },
-                allOf: [
+            },
+            rules: {
+                type: 'array',
+                description: 'Logical rules that define strategy execution',
+                minItems: 1,
+                items: {
+                    $ref: '#/definitions/rule',
+                },
+            },
+            actions: {
+                type: 'array',
+                description: 'Actions (orders) that can be executed',
+                minItems: 1,
+                items: {
+                    $ref: '#/definitions/action',
+                },
+            },
+            position_limits: {
+                type: 'array',
+                description: 'Position size limits per symbol',
+                minItems: 1,
+                items: {
+                    $ref: '#/definitions/position_limit',
+                },
+            },
+        },
+        definitions: {
+            string_value: {
+                oneOf: [
                     {
-                        if: {
-                            properties: {
-                                type: {
-                                    const: 'indicator',
-                                },
-                            },
-                        },
-                        then: {
-                            $ref: '#/definitions/data_indicator',
-                        },
+                        type: 'string',
                     },
                     {
-                        if: {
-                            properties: {
-                                type: {
-                                    const: 'time',
-                                },
-                            },
-                        },
-                        then: {
-                            $ref: '#/definitions/data_time',
-                        },
+                        $ref: '#/definitions/string_variable',
                     },
                 ],
+            },
+            numeric_value: {
+                oneOf: [
+                    {
+                        type: 'number',
+                    },
+                    {
+                        $ref: '#/definitions/numeric_variable',
+                    },
+                ],
+            },
+            string_variable: {
+                type: 'object',
+                required: ['var'],
+                properties: {
+                    var: {
+                        type: 'string',
+                    },
+                },
+                additionalProperties: false,
+            },
+            numeric_variable: {
+                type: 'object',
+                required: ['var'],
+                properties: {
+                    var: {
+                        type: 'string',
+                    },
+                },
+                additionalProperties: false,
+            },
+            string_ternary_expression: {
+                type: 'object',
+                required: ['if', 'then', 'else'],
+                properties: {
+                    if: {
+                        $ref: '#/definitions/condition',
+                    },
+                    then: {
+                        $ref: '#/definitions/string_value',
+                    },
+                    else: {
+                        $ref: '#/definitions/string_value',
+                    },
+                },
+                additionalProperties: false,
+            },
+            numeric_ternary_expression: {
+                type: 'object',
+                required: ['if', 'then', 'else'],
+                properties: {
+                    if: {
+                        $ref: '#/definitions/condition',
+                    },
+                    then: {
+                        oneOf: [
+                            { $ref: '#/definitions/numeric_expression' },
+                            {
+                                $ref: '#/definitions/numeric_ternary_expression',
+                            },
+                        ],
+                    },
+                    else: {
+                        oneOf: [
+                            { $ref: '#/definitions/numeric_expression' },
+                            {
+                                $ref: '#/definitions/numeric_ternary_expression',
+                            },
+                        ],
+                    },
+                },
+                additionalProperties: false,
             },
             timeframe: {
                 type: 'object',
                 required: ['length', 'period'],
                 properties: {
                     length: {
-                        type: 'number',
-                        description: "default 1, can't be zero",
+                        type: 'integer',
                         minimum: 1,
-                        default: 1,
+                        description: 'Number of periods',
                     },
                     period: {
                         type: 'string',
                         enum: ['second', 'minute', 'hour', 'day', 'month'],
+                        description: 'Time period unit',
                     },
                 },
+                additionalProperties: false,
             },
-            data_indicator: {
-                type: 'object',
-                required: ['indicator_type', 'params'],
-                properties: {
-                    indicator_type: {
-                        type: 'string',
-                        enum: ['sma', 'ema', 'rsi', 'atr'],
+            data_source: {
+                oneOf: [
+                    {
+                        $ref: '#/definitions/data_candle',
                     },
-                    params: {
-                        type: 'array',
+                    {
+                        $ref: '#/definitions/data_indicator',
                     },
-                },
+                ],
             },
-            data_time: {
+            data_candle: {
                 type: 'object',
-                required: ['second', 'minute', 'hour'],
-                properties: {
-                    second: {
-                        type: 'number',
-                    },
-                    minute: {
-                        type: 'number',
-                    },
-                    hour: {
-                        type: 'number',
-                    },
-                },
-            },
-            action: {
-                type: 'object',
-                required: ['id', 'order'],
+                required: ['id', 'type', 'symbol', 'timeframe'],
                 properties: {
                     id: {
                         type: 'string',
+                        description: 'Unique identifier for this data source',
                     },
-                    order: {
-                        $ref: '#/definitions/stock_order',
-                    },
-                },
-            },
-            position_limit: {
-                type: 'object',
-                required: ['symbol', 'max', 'min'],
-                properties: {
-                    symbol: {
+                    type: {
                         type: 'string',
+                        const: 'candle',
                     },
-                    max: {
-                        type: 'number',
+                    symbol: {
+                        $ref: '#/definitions/string_value',
                     },
-                    min: {
-                        type: 'number',
+                    timeframe: {
+                        $ref: '#/definitions/timeframe',
+                    },
+                    offset: {
+                        type: 'integer',
+                        description: 'Offset from the current bar',
                     },
                 },
+                additionalProperties: false,
             },
-            rule: {
+            data_indicator: {
                 type: 'object',
-                required: ['if', 'then'],
+                required: [
+                    'id',
+                    'type',
+                    'symbol',
+                    'timeframe',
+                    'indicator_type',
+                    'params',
+                ],
                 properties: {
-                    if: {
-                        $ref: '#/definitions/condition',
+                    id: {
+                        type: 'string',
+                        description: 'Unique identifier for this data source',
                     },
-                    then: {
-                        type: 'array',
-                        items: {
-                            type: 'string',
-                        },
+                    type: {
+                        type: 'string',
+                        const: 'indicator',
                     },
-                    else: {
-                        type: 'array',
-                        description: 'else is not required',
-                        items: {
-                            type: 'string',
+                    symbol: {
+                        $ref: '#/definitions/string_value',
+                    },
+                    timeframe: {
+                        $ref: '#/definitions/timeframe',
+                    },
+                    offset: {
+                        type: 'integer',
+                        description: 'Offset from the current bar',
+                    },
+                    indicator_type: {
+                        type: 'string',
+                        description:
+                            "Type of indicator (e.g., 'sma', 'ema', 'macd', 'bb')",
+                    },
+                    params: {
+                        type: 'object',
+                        description: 'Named parameters for the indicator',
+                        additionalProperties: {
+                            oneOf: [{ type: 'number' }, { type: 'string' }],
                         },
                     },
                 },
+                additionalProperties: false,
+            },
+            indicator_output_ref: {
+                type: 'object',
+                required: ['indicator_id'],
+                properties: {
+                    indicator_id: {
+                        type: 'string',
+                        description:
+                            'Reference to an indicator ID from data sources',
+                    },
+                    output: {
+                        oneOf: [{ type: 'string' }, { type: 'integer' }],
+                        description:
+                            'Output name or index (defaults to first output if omitted)',
+                    },
+                },
+                additionalProperties: false,
+            },
+            candle_field_ref: {
+                type: 'object',
+                required: ['candle_id', 'field'],
+                properties: {
+                    candle_id: {
+                        type: 'string',
+                        description:
+                            'Reference to a candle ID from data sources',
+                    },
+                    field: {
+                        type: 'string',
+                        enum: [
+                            'open',
+                            'high',
+                            'low',
+                            'close',
+                            'volume',
+                            'timestamp',
+                        ],
+                    },
+                },
+                additionalProperties: false,
+            },
+            numeric_expression: {
+                oneOf: [
+                    { $ref: '#/definitions/numeric_value' },
+                    { $ref: '#/definitions/operation' },
+                    { $ref: '#/definitions/indicator_output_ref' },
+                    { $ref: '#/definitions/candle_field_ref' },
+                ],
+            },
+            operation: {
+                type: 'object',
+                required: ['operator', 'operandA', 'operandB'],
+                properties: {
+                    operator: {
+                        type: 'string',
+                        enum: [
+                            '+',
+                            '*',
+                            '-',
+                            '/',
+                            'mod',
+                            'modulo',
+                            'pct',
+                            'percent',
+                        ],
+                    },
+                    operandA: {
+                        $ref: '#/definitions/numeric_expression',
+                    },
+                    operandB: {
+                        $ref: '#/definitions/numeric_expression',
+                    },
+                },
+                additionalProperties: false,
+            },
+            comparison: {
+                type: 'object',
+                required: ['operandA', 'operandB', 'operator'],
+                properties: {
+                    operandA: {
+                        $ref: '#/definitions/numeric_expression',
+                    },
+                    operandB: {
+                        $ref: '#/definitions/numeric_expression',
+                    },
+                    operator: {
+                        type: 'string',
+                        enum: ['<', '>', '<=', '>=', '==', '!='],
+                    },
+                },
+                additionalProperties: false,
             },
             condition: {
                 type: 'object',
-                description: "must have only one of 'expression', 'and', 'or'",
                 oneOf: [
                     {
                         required: ['expression'],
@@ -204,12 +343,8 @@ export const schema = {
                                 type: 'array',
                                 items: {
                                     oneOf: [
-                                        {
-                                            $ref: '#/definitions/condition',
-                                        },
-                                        {
-                                            $ref: '#/definitions/comparison',
-                                        },
+                                        { $ref: '#/definitions/condition' },
+                                        { $ref: '#/definitions/comparison' },
                                     ],
                                 },
                             },
@@ -223,12 +358,8 @@ export const schema = {
                                 type: 'array',
                                 items: {
                                     oneOf: [
-                                        {
-                                            $ref: '#/definitions/condition',
-                                        },
-                                        {
-                                            $ref: '#/definitions/comparison',
-                                        },
+                                        { $ref: '#/definitions/condition' },
+                                        { $ref: '#/definitions/comparison' },
                                     ],
                                 },
                             },
@@ -237,100 +368,69 @@ export const schema = {
                     },
                 ],
             },
-            value_expression: {
+            action: {
                 type: 'object',
-                required: ['value'],
+                required: ['id', 'order'],
                 properties: {
-                    value: {
-                        oneOf: [
-                            {
-                                type: 'number',
-                            },
-                            {
-                                type: 'string',
-                            },
-                            {
-                                $ref: '#/definitions/operation',
-                            },
-                            {
-                                $ref: '#/definitions/indicator_output',
-                            },
-                        ],
-                    },
-                },
-            },
-            indicator_output: {
-                type: 'object',
-                required: ['indicator_id'],
-                properties: {
-                    indicator_id: {
+                    id: {
                         type: 'string',
-                        description: 'must be valid indicator id',
+                        description: 'Unique identifier for this action',
                     },
-                    output_index: {
-                        type: 'number',
-                        description: 'default to 0',
-                        default: 0,
+                    order: {
+                        $ref: '#/definitions/stock_order',
                     },
                 },
+                additionalProperties: false,
             },
-            comparison: {
+            position_limit: {
                 type: 'object',
-                required: ['operand_a', 'operand_b', 'comparison'],
-                description: 'must have operand_a, operand_b, and comparison',
+                required: ['symbol', 'max', 'min'],
                 properties: {
-                    operand_a: {
-                        oneOf: [
-                            {
-                                $ref: '#/definitions/value_expression',
-                            },
-                            {
-                                type: 'number',
-                            },
-                        ],
+                    symbol: {
+                        $ref: '#/definitions/string_value',
                     },
-                    operand_b: {
-                        oneOf: [
-                            {
-                                $ref: '#/definitions/value_expression',
-                            },
-                            {
-                                type: 'number',
-                            },
-                        ],
+                    max: {
+                        $ref: '#/definitions/numeric_expression',
                     },
-                    comparison: {
-                        type: 'string',
-                        enum: ['<', '>', '<=', '>=', '==', '!='],
+                    min: {
+                        $ref: '#/definitions/numeric_expression',
                     },
                 },
+                additionalProperties: false,
             },
-            operation: {
+            rule: {
                 type: 'object',
-                required: ['operand', 'value_a', 'value_b'],
+                required: ['if', 'then'],
                 properties: {
-                    operand: {
-                        type: 'string',
-                        enum: ['+', '*', '-', '/', '%'],
+                    if: {
+                        $ref: '#/definitions/condition',
                     },
-                    value_a: {
-                        $ref: '#/definitions/value_expression',
+                    then: {
+                        type: 'array',
+                        items: {
+                            type: 'string',
+                        },
+                        description: 'Action IDs to execute',
                     },
-                    value_b: {
-                        $ref: '#/definitions/value_expression',
+                    else: {
+                        type: 'array',
+                        items: {
+                            type: 'string',
+                        },
+                        description: 'Optional else actions',
                     },
                 },
+                additionalProperties: false,
             },
             base_order: {
                 type: 'object',
                 required: ['symbol', 'quantity', 'side', 'tif'],
                 properties: {
                     symbol: {
-                        type: 'string',
+                        $ref: '#/definitions/string_value',
                     },
                     quantity: {
-                        type: 'number',
-                        description: 'TODO: change to expression',
+                        $ref: '#/definitions/numeric_expression',
                     },
                     side: {
                         type: 'string',
@@ -339,6 +439,7 @@ export const schema = {
                     tif: {
                         type: 'string',
                         enum: ['day', 'gtc', 'ioc', 'fok', 'gtd', 'ext'],
+                        description: 'Time in force',
                     },
                     extended_hours: {
                         type: 'boolean',
@@ -354,14 +455,13 @@ export const schema = {
             },
             market_order: {
                 allOf: [
-                    {
-                        $ref: '#/definitions/base_order',
-                    },
+                    { $ref: '#/definitions/base_order' },
                     {
                         type: 'object',
                         required: ['type'],
                         properties: {
                             type: {
+                                type: 'string',
                                 const: 'market',
                             },
                         },
@@ -370,129 +470,126 @@ export const schema = {
             },
             limit_order: {
                 allOf: [
-                    {
-                        $ref: '#/definitions/base_order',
-                    },
+                    { $ref: '#/definitions/base_order' },
                     {
                         type: 'object',
                         required: ['type', 'limit_price'],
                         properties: {
                             type: {
+                                type: 'string',
                                 const: 'limit',
                             },
                             limit_price: {
-                                type: 'number',
+                                $ref: '#/definitions/numeric_expression',
                             },
                         },
                     },
                 ],
             },
             stop_order: {
-                description: 'Stop market',
                 allOf: [
-                    {
-                        $ref: '#/definitions/base_order',
-                    },
+                    { $ref: '#/definitions/base_order' },
                     {
                         type: 'object',
                         required: ['type', 'stop_price'],
                         properties: {
                             type: {
+                                type: 'string',
                                 const: 'stop',
                             },
                             stop_price: {
-                                type: 'number',
+                                $ref: '#/definitions/numeric_expression',
                             },
                         },
                     },
                 ],
             },
             stop_limit_order: {
-                description: 'Stop-limit',
                 allOf: [
-                    {
-                        $ref: '#/definitions/base_order',
-                    },
+                    { $ref: '#/definitions/base_order' },
                     {
                         type: 'object',
                         required: ['type', 'stop_price', 'limit_price'],
                         properties: {
                             type: {
+                                type: 'string',
                                 const: 'stop_limit',
                             },
                             stop_price: {
-                                type: 'number',
+                                $ref: '#/definitions/numeric_expression',
                             },
                             limit_price: {
-                                type: 'number',
+                                $ref: '#/definitions/numeric_expression',
                             },
                         },
                     },
                 ],
             },
             trailing_stop_order: {
-                description: 'Trailing Stop',
                 allOf: [
-                    {
-                        $ref: '#/definitions/base_order',
-                    },
+                    { $ref: '#/definitions/base_order' },
                     {
                         type: 'object',
                         required: ['type'],
                         properties: {
                             type: {
+                                type: 'string',
                                 const: 'trailing_stop',
                             },
                             trail_amount: {
-                                type: 'number',
-                                description: 'Dollar amount',
+                                $ref: '#/definitions/numeric_expression',
+                                description: 'Dollar amount for trailing stop',
                             },
                             trail_percent: {
-                                type: 'number',
-                                description: 'Percentage',
+                                $ref: '#/definitions/numeric_expression',
+                                description: 'Percentage for trailing stop',
                             },
                         },
+                        oneOf: [
+                            { required: ['trail_amount'] },
+                            { required: ['trail_percent'] },
+                        ],
                     },
                 ],
             },
             trailing_stop_limit_order: {
-                description: 'Trailing Stop-limit',
                 allOf: [
-                    {
-                        $ref: '#/definitions/base_order',
-                    },
+                    { $ref: '#/definitions/base_order' },
                     {
                         type: 'object',
                         required: ['type', 'limit_offset'],
                         properties: {
                             type: {
+                                type: 'string',
                                 const: 'trailing_stop_limit',
                             },
                             trail_amount: {
-                                type: 'number',
+                                $ref: '#/definitions/numeric_expression',
                             },
                             trail_percent: {
-                                type: 'number',
+                                $ref: '#/definitions/numeric_expression',
                             },
                             limit_offset: {
-                                type: 'number',
+                                $ref: '#/definitions/numeric_expression',
                                 description: 'Offset from stop price for limit',
                             },
                         },
+                        oneOf: [
+                            { required: ['trail_amount'] },
+                            { required: ['trail_percent'] },
+                        ],
                     },
                 ],
             },
             oco_order: {
-                description: 'OCO',
                 allOf: [
-                    {
-                        $ref: '#/definitions/base_order',
-                    },
+                    { $ref: '#/definitions/base_order' },
                     {
                         type: 'object',
                         required: ['type', 'orders'],
                         properties: {
                             type: {
+                                type: 'string',
                                 const: 'oco',
                             },
                             orders: {
@@ -501,12 +598,8 @@ export const schema = {
                                 maxItems: 2,
                                 items: {
                                     oneOf: [
-                                        {
-                                            $ref: '#/definitions/limit_order',
-                                        },
-                                        {
-                                            $ref: '#/definitions/stop_order',
-                                        },
+                                        { $ref: '#/definitions/limit_order' },
+                                        { $ref: '#/definitions/stop_order' },
                                         {
                                             $ref: '#/definitions/stop_limit_order',
                                         },
@@ -518,11 +611,8 @@ export const schema = {
                 ],
             },
             bracket_order: {
-                description: 'Bracket',
                 allOf: [
-                    {
-                        $ref: '#/definitions/base_order',
-                    },
+                    { $ref: '#/definitions/base_order' },
                     {
                         type: 'object',
                         required: [
@@ -533,16 +623,13 @@ export const schema = {
                         ],
                         properties: {
                             type: {
+                                type: 'string',
                                 const: 'bracket',
                             },
                             entry_order: {
                                 oneOf: [
-                                    {
-                                        $ref: '#/definitions/market_order',
-                                    },
-                                    {
-                                        $ref: '#/definitions/limit_order',
-                                    },
+                                    { $ref: '#/definitions/market_order' },
+                                    { $ref: '#/definitions/limit_order' },
                                 ],
                             },
                             profit_target: {
@@ -550,12 +637,8 @@ export const schema = {
                             },
                             stop_loss: {
                                 oneOf: [
-                                    {
-                                        $ref: '#/definitions/stop_order',
-                                    },
-                                    {
-                                        $ref: '#/definitions/stop_limit_order',
-                                    },
+                                    { $ref: '#/definitions/stop_order' },
+                                    { $ref: '#/definitions/stop_limit_order' },
                                 ],
                             },
                         },
@@ -563,11 +646,8 @@ export const schema = {
                 ],
             },
             iceberg_order: {
-                description: 'Iceberg',
                 allOf: [
-                    {
-                        $ref: '#/definitions/base_order',
-                    },
+                    { $ref: '#/definitions/base_order' },
                     {
                         type: 'object',
                         required: [
@@ -578,98 +658,91 @@ export const schema = {
                         ],
                         properties: {
                             type: {
+                                type: 'string',
                                 const: 'iceberg',
                             },
                             limit_price: {
-                                type: 'number',
+                                $ref: '#/definitions/numeric_expression',
                             },
                             display_quantity: {
-                                type: 'number',
+                                $ref: '#/definitions/numeric_expression',
                                 description: 'Visible quantity',
                             },
                             total_quantity: {
-                                type: 'number',
+                                $ref: '#/definitions/numeric_expression',
                                 description: 'Total order size',
                             },
                         },
                     },
                 ],
             },
-            all_or_none_order: {
-                description: 'All or none',
+            aon_order: {
                 allOf: [
-                    {
-                        $ref: '#/definitions/base_order',
-                    },
+                    { $ref: '#/definitions/base_order' },
                     {
                         type: 'object',
                         required: ['type', 'limit_price'],
                         properties: {
                             type: {
+                                type: 'string',
                                 const: 'all_or_none',
                             },
                             limit_price: {
-                                type: 'number',
+                                $ref: '#/definitions/numeric_expression',
                             },
                         },
                     },
                 ],
             },
-            fill_or_kill_order: {
-                description: 'FOK',
+            fok_order: {
                 allOf: [
-                    {
-                        $ref: '#/definitions/base_order',
-                    },
+                    { $ref: '#/definitions/base_order' },
                     {
                         type: 'object',
                         required: ['type'],
                         properties: {
                             type: {
+                                type: 'string',
                                 const: 'fill_or_kill',
                             },
                             limit_price: {
-                                type: 'number',
+                                $ref: '#/definitions/numeric_expression',
                             },
                         },
                     },
                 ],
             },
-            immediate_or_cancel_order: {
-                description: 'IOC',
+            ioc_order: {
                 allOf: [
-                    {
-                        $ref: '#/definitions/base_order',
-                    },
+                    { $ref: '#/definitions/base_order' },
                     {
                         type: 'object',
                         required: ['type'],
                         properties: {
                             type: {
+                                type: 'string',
                                 const: 'immediate_or_cancel',
                             },
                             limit_price: {
-                                type: 'number',
+                                $ref: '#/definitions/numeric_expression',
                             },
                         },
                     },
                 ],
             },
-            good_till_date_order: {
-                description: 'GTD',
+            gtd_order: {
                 allOf: [
-                    {
-                        $ref: '#/definitions/base_order',
-                    },
+                    { $ref: '#/definitions/base_order' },
                     {
                         type: 'object',
                         required: ['type', 'expiration_date'],
                         properties: {
                             type: {
+                                type: 'string',
                                 const: 'good_till_date',
                             },
                             limit_price: {
-                                type: 'number',
+                                $ref: '#/definitions/numeric_expression',
                             },
                             expiration_date: {
                                 type: 'string',
@@ -681,14 +754,13 @@ export const schema = {
             },
             pegged_order: {
                 allOf: [
-                    {
-                        $ref: '#/definitions/base_order',
-                    },
+                    { $ref: '#/definitions/base_order' },
                     {
                         type: 'object',
                         required: ['type', 'peg_type'],
                         properties: {
                             type: {
+                                type: 'string',
                                 const: 'pegged',
                             },
                             peg_type: {
@@ -701,66 +773,32 @@ export const schema = {
                                 ],
                             },
                             limit_price: {
-                                type: 'number',
+                                $ref: '#/definitions/numeric_expression',
                             },
                             offset: {
-                                type: 'number',
+                                $ref: '#/definitions/numeric_expression',
                             },
                         },
                     },
                 ],
             },
             stock_order: {
-                description: 'Union type for all order types',
                 oneOf: [
-                    {
-                        $ref: '#/definitions/market_order',
-                    },
-                    {
-                        $ref: '#/definitions/limit_order',
-                    },
-                    {
-                        $ref: '#/definitions/stop_order',
-                    },
-                    {
-                        $ref: '#/definitions/stop_limit_order',
-                    },
-                    {
-                        $ref: '#/definitions/trailing_stop_order',
-                    },
-                    {
-                        $ref: '#/definitions/trailing_stop_limit_order',
-                    },
-                    {
-                        $ref: '#/definitions/oco_order',
-                    },
-                    {
-                        $ref: '#/definitions/bracket_order',
-                    },
-                    {
-                        $ref: '#/definitions/iceberg_order',
-                    },
-                    {
-                        $ref: '#/definitions/all_or_none_order',
-                    },
-                    {
-                        $ref: '#/definitions/fill_or_kill_order',
-                    },
-                    {
-                        $ref: '#/definitions/immediate_or_cancel_order',
-                    },
-                    {
-                        $ref: '#/definitions/good_till_date_order',
-                    },
-                    {
-                        $ref: '#/definitions/pegged_order',
-                    },
+                    { $ref: '#/definitions/market_order' },
+                    { $ref: '#/definitions/limit_order' },
+                    { $ref: '#/definitions/stop_order' },
+                    { $ref: '#/definitions/stop_limit_order' },
+                    { $ref: '#/definitions/trailing_stop_order' },
+                    { $ref: '#/definitions/trailing_stop_limit_order' },
+                    { $ref: '#/definitions/oco_order' },
+                    { $ref: '#/definitions/bracket_order' },
+                    { $ref: '#/definitions/iceberg_order' },
+                    { $ref: '#/definitions/aon_order' },
+                    { $ref: '#/definitions/fok_order' },
+                    { $ref: '#/definitions/ioc_order' },
+                    { $ref: '#/definitions/gtd_order' },
+                    { $ref: '#/definitions/pegged_order' },
                 ],
-            },
-            time_in_force: {
-                description: 'Time in Force enum for better type safety',
-                type: 'string',
-                enum: ['DAY', 'GTC', 'IOC', 'FOK', 'GTD', 'EXT'],
             },
         },
     },

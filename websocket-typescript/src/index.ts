@@ -13,7 +13,6 @@
  * - JSON output generation and persistence
  */
 
-import { qsdl1, qsdl1_response1 } from './examples';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import { schema } from './schema/schema_v0.0.1'; //'../../../../schema/schema_v0.0.1';
@@ -75,7 +74,7 @@ async function main() {
         //testOpenAI();
         //testAnthropic();
         new WebsocketConversationServer({
-            port: 1077,
+            port: process.env.PORT ? parseInt(process.env.PORT) : 1077,
             jwtSecret: process.env.JWT_SECRET || 'secret',
         }).start();
     }

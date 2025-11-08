@@ -6,20 +6,6 @@
  * with trading strategy generation through a browser interface.
  *
  */
-//TODO:
-/*
-    2. what happens on successful download 
-    3. what happens on failure to produce qsdl 
-    4. what happens on failure to validate schema 
-    5. deploy 
-    6. security
-
-    UX: 
-    1. add start & reset conv. button s
-    2. start conv. automatically 
-    3. end conv on success or failure 
-    4. download the qsdl as file
- */
 
 import express from 'express';
 import path from 'path';

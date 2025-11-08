@@ -86,7 +86,7 @@ npm run dev
 
 This will:
 
-1. Start the WebSocket server on port 1077
+1. Start the WebSocket server on port 9000
 2. Initialize the WebSocket client
 3. Begin the interactive CLI conversation
 
@@ -160,7 +160,7 @@ const qsdlJson = await conversation.startConversation();
 
 ```typescript
 new WebsocketConversationServer({
-    port: 1077,
+    port: 9000,
     jwtSecret: process.env.JWT_SECRET || 'secret',
 }).start();
 ```
@@ -169,7 +169,7 @@ new WebsocketConversationServer({
 
 ```typescript
 const client = new WebsocketClient({
-    url: 'http://localhost:1077',
+    url: 'http://localhost:9000',
 });
 
 client.onMessage(async (data) => {
@@ -263,7 +263,7 @@ Generated strategies are saved as JSON files conforming to the QSDL schema:
 
 If the WebSocket connection fails:
 
--   Ensure port 1077 is available
+-   Ensure port 9000 is available
 -   Check firewall settings
 -   Verify the server is running
 

@@ -198,9 +198,9 @@ export class WebsocketConversationServer {
         });
 
         this._logger.info(
-            `WebSocket server listening on ${
-                this._config.host || 'localhost'
-            }:${this._config.port}`
+            `WebSocket server listening on ${this._config.host || '0.0.0.0'}:${
+                this._config.port
+            }`
         );
     }
 

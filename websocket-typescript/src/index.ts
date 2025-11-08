@@ -74,14 +74,14 @@ async function main() {
         //testOpenAI();
         //testAnthropic();
         new WebsocketConversationServer({
-            port: process.env.PORT ? parseInt(process.env.PORT) : 1077,
+            port: process.env.PORT ? parseInt(process.env.PORT) : 9000,
             jwtSecret: process.env.JWT_SECRET || 'secret',
         }).start();
     }
 
     if (TEST_WSS_CLIENT) {
         const client = new WebsocketClient({
-            url: 'http://localhost:1077',
+            url: 'http://localhost:9000',
         });
 
         client.onMessage(async (data) => {

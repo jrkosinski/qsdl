@@ -8,7 +8,7 @@ import chalk from 'chalk';
  */
 async function main() {
     const client = new WebsocketClient({
-        url: 'ws://localhost:1077',
+        url: 'ws://localhost:9000',
         reconnect: true,
         reconnectInterval: 3000,
         maxReconnectAttempts: 5,

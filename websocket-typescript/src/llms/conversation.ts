@@ -29,6 +29,7 @@
  */
 
 const SCHEMA_VERSION = '0.1.3';
+
 import { schema } from '../schema/schema_v0.1.3';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
@@ -62,8 +63,8 @@ export interface IUserIO {
 }
 
 const SCHEMA_FAIL_MAX_RETRIES = 3;
-const MAX_QUESTION_LOOP_COUNT = 20;
-const MOCK_MODE: boolean = true;
+const MAX_QUESTION_LOOP_COUNT = 25;
+const MOCK_MODE: boolean = false;
 //const INITIAL_SYSTEM_PROMPT = `I'm going to give you a schema for a json document. And a text description of a trading strategy. I would like you to convert the text description into a chunk of json that satisfies the schema. If there are any questions or things that need clarification (information missing), then ask before generating the json. But preface all of your responses that are questions with a 'Q:'. Ask one question at a time, or maximum two if they are related. Your job is to finally generate the json, so don't ask questions if the answers aren't necessary for generating the json (e.g. no need to ask questions about things that aren't directly reflected in the json schema). Do not discuss or answer things that are not directly about the trading strategy to be generated. When you send me json, send me nothing but json (no text explanation accompanying it). If not sending JSON, then always preface your response with 'Q:'`;
 const INITIAL_SYSTEM_PROMPT = `I'm going to give you a schema for a json document. 
 And an equivalent definition of IStrategy in typescript.

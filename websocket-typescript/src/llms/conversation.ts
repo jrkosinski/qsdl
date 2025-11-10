@@ -430,7 +430,7 @@ export class AnthropicConversation {
     private async _sendToUser(message: string) {
         this._outMessageCount++;
         this._logger.debug(`MESSAGE OUT: ${this._outMessageCount}`);
-        await this._inputModule.onMessage('Processing...');
+        await this._inputModule.onMessage(message);
     }
 
     /**

@@ -44,6 +44,8 @@ class WebsocketUserIO implements IUserIO {
         this._server = server;
         this._logger = new Logger('WSIO-' + this.id);
 
+        this._sendMessageToClient('id', this._id);
+
         this._ws.on('message', (data: Buffer) => {
             this._handleMessage(ws, data);
         });
@@ -67,8 +69,8 @@ class WebsocketUserIO implements IUserIO {
         return new Promise<string>((resolve, reject) => {
             const timeout = setTimeout(() => {
                 this._pendingResponse = null;
-                reject(new Error('Timeout waiting for user response'));
-            }, 30000000); // 5 minute timeout
+                //reject(new Error('Timeout waiting for user response'));
+            }, 30000000); // 50 minute timeout
 
             this._pendingResponse = (response: string) => {
                 this._logger.debug('clearing timeout');

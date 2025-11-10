@@ -111,6 +111,11 @@
                 font-style: italic;
                 color: #6c757d;
             }
+            .conversation.id {
+                background-color: #f8f9fa;
+                font-style: italic;
+                color: #850808;
+            }
         </style>
     </head>
     <body onLoad="start()">
@@ -118,6 +123,7 @@
             <h1>WebSocket Client</h1>
 
             <div id="status" class="status disconnected">Disconnected</div>
+            <div id="divConvId" class="conversation id"></div>
 
             <div class="controls">
                 <button id="startBtn" class="connect-btn">Start</button>
@@ -158,6 +164,7 @@
             const messagesDiv = document.getElementById('messages');
             const qsdlDiv = document.getElementById('divQsdl');
             const codeDiv = document.getElementById('divCode');
+            const convIdDiv = document.getElementById('divConvId');
 
             let currentFilename = '_file_';
 
@@ -178,6 +185,10 @@
                         messageText = jsonMsg.text;
                         promptDiv.innerText =
                             jsonMsg.type + ': ' + jsonMsg.text;
+
+                        if (jsonMsg.type == 'id') {
+                            divConvId.innerText = `Conversation ID: ${jsonMsg.text}`;
+                        }
                     } else {
                         currentFilename = jsonMsg.name.replaceAll(' ', '_');
                         addQsdlDownloadLink(jsonMsg, `${currentFilename}.json`);
@@ -267,6 +278,8 @@
 
             function reset() {
                 currentFilename = '_file_';
+                convIdDiv.innerText = '';
+
                 if (ws) {
                     ws.close();
                     start();

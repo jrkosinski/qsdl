@@ -3,7 +3,7 @@
 #include <Trade\OrderInfo.mqh>
 
 CTrade trade;
-CPositionInfo position;
+CPositionInfo positionInfo;
 COrderInfo orderInfo;
 
 // ========================= BODY START =========================
@@ -16,17 +16,20 @@ COrderInfo orderInfo;
 
 int indicators_sma(string symbol, int timeframe, int period, int shift, int price)
 {
-    return iMA(symbol, timeframe, period, shift, MODE_SMA, price);
+   //TODO: map timeframe to the second parameter
+    return iMA(symbol, 1, period, shift, MODE_SMA, price);
 }
 
 int indicators_ema(string symbol, int timeframe, int period, int shift, int price)
 {
-    return iMA(symbol, timeframe, period, shift, MODE_EMA, price);
+   //TODO: map timeframe to the second parameter
+    return iMA(symbol, 1, period, shift, MODE_EMA, price);
 }
 
 int indicators_macd(string symbol, int timeframe, int fastPeriod, int slowPeriod, int signalPeriod, int price) 
 {
-    return iMACD(symbol, timeframe, fastPeriod, slowPeriod, signalPeriod, price);
+   //TODO: map timeframe to the second parameter
+    return iMACD(symbol, 1, fastPeriod, slowPeriod, signalPeriod, price);
 }
 
 // ====================== INDICATORS END ========================

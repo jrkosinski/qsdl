@@ -351,10 +351,10 @@ function saveGeneratedCode(
 ) {
     strategyName = strategyName.replace(' ', '_');
 
-    console.log(`save MT5 code to: ${strategyName}_strategy.mt5`);
+    console.log(`save MT5 code to: ${strategyName}_strategy.mq5`);
     console.log(`save JavaScript code to: ${strategyName}_strategy.js`);
 
-    fs.writeFileSync(`${strategyName}_strategy.mt5`, pythonCode, 'utf-8');
+    fs.writeFileSync(`${strategyName}_strategy.mq5`, pythonCode, 'utf-8');
     fs.writeFileSync(`${strategyName}_strategy.js`, jsCode, 'utf-8');
 }
 

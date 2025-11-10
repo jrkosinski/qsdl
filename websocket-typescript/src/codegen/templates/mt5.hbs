@@ -14,17 +14,17 @@ COrderInfo orderInfo;
 // ======================== INDICATORS ==========================
 
 
-int indicators_sma(string symbol, string timeframe, int period, int shift, string price)
+int indicators_sma(string symbol, int timeframe, int period, int shift, int price)
 {
     return iMA(symbol, timeframe, period, shift, MODE_SMA, price);
 }
 
-int indicators_ema(string symbol, string timeframe, int period, int shift, string price)
+int indicators_ema(string symbol, int timeframe, int period, int shift, int price)
 {
     return iMA(symbol, timeframe, period, shift, MODE_EMA, price);
 }
 
-int indicators_macd(string symbol, string timeframe, int fastPeriod, int slowPeriod, int signalPeriod, string price) 
+int indicators_macd(string symbol, int timeframe, int fastPeriod, int slowPeriod, int signalPeriod, int price) 
 {
     return iMACD(symbol, timeframe, fastPeriod, slowPeriod, signalPeriod, price);
 }
@@ -71,7 +71,7 @@ int OrderTypeFromSide(string side, bool isLimit=false, bool isStop=false)
 //---------------------------------------------------------
 bool ExecuteOrder(OrderParams &o)
 {
-   trade.SetExpertMagicNumber(123456);
+   trade.SetExpertMagicNumber(MagicNumber);
    trade.SetTypeFillingBySymbol(o.symbol);
    trade.SetDeviationInPoints(10);
 
@@ -92,21 +92,45 @@ bool ExecuteOrder(OrderParams &o)
    if(o.type == "limit")
    {
       orderType = OrderTypeFromSide(o.side, true, false);
-      return trade.OrderSend(o.symbol, orderType, o.volume, o.limit_price, 10, o.sl, o.tp, "Limit", 0, 0, clrBlue);
+     
+      MqlTradeRequest req = {TRADE_ACTION_DEAL};
+      MqlTradeResult res = {TRADE_ACTION_DEAL};
+      req.action      = TRADE_ACTION_DEAL;
+      req.symbol      = o.symbol;
+      req.volume      = o.volume;
+      req.type        = (o.side == "buy" ? ORDER_TYPE_BUY_LIMIT : ORDER_TYPE_SELL_LIMIT);
+      req.price       = o.limit_price;
+      req.deviation   = 10;
+      req.magic       = MagicNumber;
+      req.comment     = "Limit";
+     
+      return OrderSend(req, res);
    }
 
    //--------------- STOP -------------------
    if(o.type == "stop")
    {
       orderType = OrderTypeFromSide(o.side, false, true);
-      return trade.OrderSend(o.symbol, orderType, o.volume, o.stop_price, 10, o.sl, o.tp, "Stop", 0, 0, clrRed);
+     
+      MqlTradeRequest req = {TRADE_ACTION_PENDING};
+      MqlTradeResult res = {TRADE_ACTION_PENDING};
+      req.action      = TRADE_ACTION_PENDING;
+      req.symbol      = o.symbol;
+      req.volume      = o.volume;
+      req.type        = (o.side == "buy" ? ORDER_TYPE_BUY_STOP : ORDER_TYPE_SELL_STOP);
+      req.price       = o.stop_price;
+      req.deviation   = 10;
+      req.magic       = MagicNumber;
+      req.comment     = "Stop";
+     
+      return OrderSend(req, res);
    }
 
    //--------------- STOP-LIMIT --------------
    if(o.type == "stop_limit")
    {
-      MqlTradeRequest req = {0};
-      MqlTradeResult res = {0};
+      MqlTradeRequest req = {TRADE_ACTION_PENDING};
+      MqlTradeResult res = {TRADE_ACTION_PENDING};
       req.action      = TRADE_ACTION_PENDING;
       req.symbol      = o.symbol;
       req.volume      = o.volume;
@@ -114,7 +138,7 @@ bool ExecuteOrder(OrderParams &o)
       req.price       = o.stop_price;
       req.stoplimit   = o.limit_price;
       req.deviation   = 10;
-      req.magic       = 123456;
+      req.magic       = MagicNumber;
       req.comment     = "Stop-Limit";
       return OrderSend(req, res);
    }
@@ -142,19 +166,19 @@ bool ExecuteOrder(OrderParams &o)
    //--------------- FOK / IOC / GTD ----------
    if(o.type == "fill_or_kill" || o.type == "immediate_or_cancel" || o.type == "good_till_date")
    {
-      MqlTradeRequest req = {0};
-      MqlTradeResult res = {0};
+      MqlTradeRequest req = {TRADE_ACTION_DEAL};
+      MqlTradeResult res = {TRADE_ACTION_DEAL};
       req.action    = TRADE_ACTION_DEAL;
       req.symbol    = o.symbol;
       req.volume    = o.volume;
       req.type      = (o.side == "buy" ? ORDER_TYPE_BUY : ORDER_TYPE_SELL);
       req.price     = (o.side == "buy" ? ask : bid);
       req.deviation = 10;
-      req.magic     = 123456;
+      req.magic     = MagicNumber;
       req.comment   = o.type;
 
-      if(o.type == "fill_or_kill") req.type_filling = ORDER_FILL_FOK;
-      if(o.type == "immediate_or_cancel") req.type_filling = ORDER_FILL_IOC;
+      if(o.type == "fill_or_kill") req.type_filling = ORDER_FILLING_FOK;
+      if(o.type == "immediate_or_cancel") req.type_filling = ORDER_FILLING_IOC;
       if(o.type == "good_till_date") req.type_time = ORDER_TIME_SPECIFIED; req.expiration = o.expiration;
 
       return OrderSend(req, res);

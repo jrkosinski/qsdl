@@ -101,11 +101,9 @@ export class MT5CodeGenerator extends CodeGenerator<string> {
         }
 
         //add standard EA parameters
+        //TODO: what is the spec for valid MT5 EA magic numbers?
         this.code.push(
-            'input int MagicNumber = 123456;  //magic number for this EA'
-        );
-        this.code.push(
-            'input double Slippage = 10;      //maximum slippage in points'
+            `input int MagicNumber = ${this.generateMagicNumber()};  //magic number for this EA`
         );
         this.code.push(
             'input bool EnableTrading = true;  //enable/disable trading'
@@ -114,12 +112,6 @@ export class MT5CodeGenerator extends CodeGenerator<string> {
     }
 
     private generateGlobalVariables(ast: StrategyNode) {
-        this.code.push('//--- Global variables');
-        this.code.push('CTrade trade;');
-        this.code.push('CPositionInfo positionInfo;');
-        this.code.push('COrderInfo orderInfo;');
-        this.code.push('');
-
         //generate indicator handles
         const indicators = ast.dataSources.filter(
             (ds) => ds instanceof IndicatorNode
@@ -193,9 +185,7 @@ export class MT5CodeGenerator extends CodeGenerator<string> {
         this.code.push(
             this.getIndent() + 'trade.SetExpertMagicNumber(MagicNumber);'
         );
-        this.code.push(
-            this.getIndent() + 'trade.SetDeviationInPoints(Slippage);'
-        );
+        this.code.push(this.getIndent() + 'trade.SetDeviationInPoints(10);');
         this.code.push(
             this.getIndent() + 'trade.SetTypeFilling(ORDER_FILLING_IOC);'
         );
@@ -724,6 +714,24 @@ export class MT5CodeGenerator extends CodeGenerator<string> {
         }
     }
 
+    private getIndicatorType(indicatorId: string): string {
+        //this would need to be tracked during parsing
+        //for now, we'll check the buffer name patterns
+        if (indicatorId.includes('macd')) return 'macd';
+        if (indicatorId.includes('bb')) return 'bb';
+        return 'default';
+    }
+
+    private generateMagicNumber(): string {
+        let output = '';
+        for (let n = 0; n < 6; n++) {
+            const r = Math.floor(Math.random() * 10);
+            output += (n == 0 ? (r == 0 ? r + 1 : r) : r).toString();
+        }
+
+        return output;
+    }
+
     //visitor implementations
     visitStrategy(node: StrategyNode): string {
         return this.generate(node);
@@ -866,13 +874,5 @@ export class MT5CodeGenerator extends CodeGenerator<string> {
             default:
                 return 'iClose(_Symbol, 0, 0)';
         }
-    }
-
-    private getIndicatorType(indicatorId: string): string {
-        //this would need to be tracked during parsing
-        //for now, we'll check the buffer name patterns
-        if (indicatorId.includes('macd')) return 'macd';
-        if (indicatorId.includes('bb')) return 'bb';
-        return 'default';
     }
 }

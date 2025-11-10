@@ -2,6 +2,9 @@
  * Abstract Syntax Tree Node Definitions for Trading Strategy
  */
 
+import { Rule } from 'ajv/dist/compile/rules';
+import { isStringArray } from '../util';
+
 // ============================================================================
 // Execution Context
 // ============================================================================
@@ -669,8 +672,8 @@ export class LimitOrderNode extends OrderNode {
 export class RuleNode extends ASTNode {
     constructor(
         public readonly condition: ConditionNode,
-        public readonly thenActions: string[],
-        public readonly elseActions?: string[]
+        public readonly thenActions: string[] | RuleNode[],
+        public readonly elseActions?: string[] | RuleNode[]
     ) {
         super('Rule');
     }
@@ -681,17 +684,8 @@ export class RuleNode extends ASTNode {
         //validate action references
         const errors: ValidationError[] = [...conditionResult.errors];
 
-        for (const actionId of this.thenActions) {
-            if (!context.definedActions.has(actionId)) {
-                errors.push({
-                    message: `Undefined action: ${actionId}`,
-                    severity: 'error',
-                });
-            }
-        }
-
-        if (this.elseActions) {
-            for (const actionId of this.elseActions) {
+        if (isStringArray(this.thenActions)) {
+            for (const actionId of this.thenActions) {
                 if (!context.definedActions.has(actionId)) {
                     errors.push({
                         message: `Undefined action: ${actionId}`,
@@ -699,6 +693,23 @@ export class RuleNode extends ASTNode {
                     });
                 }
             }
+        } else {
+            //TODO: define this
+        }
+
+        if (isStringArray(this.elseActions)) {
+            if (this.elseActions) {
+                for (const actionId of this.elseActions) {
+                    if (!context.definedActions.has(actionId)) {
+                        errors.push({
+                            message: `Undefined action: ${actionId}`,
+                            severity: 'error',
+                        });
+                    }
+                }
+            }
+        } else {
+            //TODO: define this
         }
 
         return {
@@ -713,11 +724,17 @@ export class RuleNode extends ASTNode {
     }
 
     toString(): string {
-        let str = `IF ${this.condition.toString()} THEN [${this.thenActions.join(
-            ', '
-        )}]`;
+        //TODO: support nested rules
+
+        let str = `IF ${this.condition.toString()} THEN [${
+            isStringArray(this.thenActions) ? this.thenActions.join(', ') : []
+        }]`;
         if (this.elseActions) {
-            str += ` ELSE [${this.elseActions.join(', ')}]`;
+            str += ` ELSE [${
+                isStringArray(this.elseActions)
+                    ? this.elseActions.join(', ')
+                    : []
+            }]`;
         }
         return str;
     }

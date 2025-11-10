@@ -2,6 +2,7 @@
  * Code Generators for converting AST to executable code
  */
 
+import { isString } from 'util';
 import { CodeGenerator } from '.';
 import {
     StrategyNode,
@@ -22,6 +23,7 @@ import {
     IndicatorOutputRefNode,
     CandleFieldRefNode,
 } from '../ast-node';
+import { isStringArray } from '../../util';
 
 /**
  * JavaScript Code Generator
@@ -191,21 +193,31 @@ export class JavaScriptCodeGenerator extends CodeGenerator<string> {
                 this.getIndent() + 'if (' + rule.condition.accept(this) + ') {'
             );
             this.increaseIndent();
-            for (const actionId of rule.thenActions) {
-                this.code.push(
-                    this.getIndent() + `actionsToExecute.push('${actionId}');`
-                );
-            }
-            this.decreaseIndent();
 
-            if (rule.elseActions && rule.elseActions.length > 0) {
-                this.addCodeLine('} else {');
-                this.increaseIndent();
-                for (const actionId of rule.elseActions) {
+            if (isStringArray(rule.thenActions)) {
+                for (const actionId of rule.thenActions) {
                     this.code.push(
                         this.getIndent() +
                             `actionsToExecute.push('${actionId}');`
                     );
+                }
+            }
+            this.decreaseIndent();
+
+            if (
+                rule.elseActions &&
+                isStringArray(rule.elseActions) &&
+                rule.elseActions.length > 0
+            ) {
+                this.addCodeLine('} else {');
+                this.increaseIndent();
+                if (isStringArray(rule.elseActions)) {
+                    for (const actionId of rule.elseActions) {
+                        this.code.push(
+                            this.getIndent() +
+                                `actionsToExecute.push('${actionId}');`
+                        );
+                    }
                 }
                 this.decreaseIndent();
             }

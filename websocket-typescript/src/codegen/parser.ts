@@ -62,6 +62,7 @@ import type {
     limit_order,
     //add other order types as needed
 } from '../schema/schemaCode_v0.1.3';
+import { isStringArray } from '../util';
 
 export class StrategyParser {
     private indicatorRegistry: Map<string, any>;
@@ -223,7 +224,23 @@ export class StrategyParser {
 
     private parseRule(rule: rule): RuleNode {
         const condition = this.parseCondition(rule.if);
-        return new RuleNode(condition, rule.then, rule.else);
+
+        let thenNode: RuleNode[] | string[];
+        let elseNode: RuleNode[] | string[] | undefined = undefined;
+
+        if (isStringArray(rule.then)) thenNode = rule.then;
+        else {
+            thenNode = [this.parseRule(rule.then)];
+        }
+
+        if (rule.else) {
+            if (isStringArray(rule.else)) elseNode = rule.else;
+            else {
+                elseNode = [this.parseRule(rule.else)];
+            }
+        }
+
+        return new RuleNode(condition, thenNode, elseNode);
     }
 
     /**

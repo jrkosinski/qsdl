@@ -341,8 +341,8 @@ export interface numeric_variable {
 
 export interface string_ternary_expression {
     if: condition;
-    then: string_value;
-    else: string_value;
+    then: string_value | string_ternary_expression;
+    else: string_value | string_ternary_expression;
 }
 
 export interface numeric_ternary_expression {
@@ -429,8 +429,8 @@ export interface position_limit {
  */
 export interface rule {
     if: condition;
-    then: string[]; //action IDs to execute
-    else?: string[]; //optional else actions
+    then: string[] | rule; //action IDs to execute
+    else?: string[] | rule; //optional else actions
 }
 
 // ============================================================================

@@ -103,10 +103,20 @@ export const schema = {
                         $ref: '#/definitions/condition',
                     },
                     then: {
-                        $ref: '#/definitions/string_value',
+                        oneOf: [
+                            { $ref: '#/definitions/string_expression' },
+                            {
+                                $ref: '#/definitions/string_ternary_expression',
+                            },
+                        ],
                     },
                     else: {
-                        $ref: '#/definitions/string_value',
+                        oneOf: [
+                            { $ref: '#/definitions/string_expression' },
+                            {
+                                $ref: '#/definitions/string_ternary_expression',
+                            },
+                        ],
                     },
                 },
                 additionalProperties: false,
@@ -406,18 +416,34 @@ export const schema = {
                         $ref: '#/definitions/condition',
                     },
                     then: {
-                        type: 'array',
-                        items: {
-                            type: 'string',
-                        },
-                        description: 'Action IDs to execute',
+                        oneOf: [
+                            {
+                                type: 'array',
+                                items: {
+                                    type: 'string',
+                                },
+                                description: 'Action IDs to execute',
+                            },
+                            {
+                                $ref: '#/definitions/rule',
+                                description: 'Nested rule',
+                            },
+                        ],
                     },
                     else: {
-                        type: 'array',
-                        items: {
-                            type: 'string',
-                        },
-                        description: 'Optional else actions',
+                        oneOf: [
+                            {
+                                type: 'array',
+                                items: {
+                                    type: 'string',
+                                },
+                                description: 'Optional else actions',
+                            },
+                            {
+                                $ref: '#/definitions/rule',
+                                description: 'Nested else rule',
+                            },
+                        ],
                     },
                 },
                 additionalProperties: false,

@@ -159,6 +159,8 @@
             const qsdlDiv = document.getElementById('divQsdl');
             const codeDiv = document.getElementById('divCode');
 
+            let currentFilename = '_file_';
+
             function isJson(s) {
                 s = s?.trim() || '';
                 return s.startsWith('{') && s.endsWith('}');
@@ -176,20 +178,18 @@
                         messageText = jsonMsg.text;
                         promptDiv.innerText =
                             jsonMsg.type + ': ' + jsonMsg.text;
-                        showMessage(messageText, type);
                     } else {
-                        addQsdlDownloadLink(
-                            jsonMsg,
-                            `${jsonMsg.name.replaceAll(' ', '_')}.json`
-                        );
-                        showMessage('QSDL AVAILABLE FOR DOWNLOAD', type);
+                        currentFilename = jsonMsg.name.replaceAll(' ', '_');
+                        addQsdlDownloadLink(jsonMsg, `${currentFilename}.json`);
+                        messageText = 'QSDL AVAILABLE FOR DOWNLOAD';
                     }
+                    showMessage(messageText, type);
                 } else {
                     const prefix = 'GENERATED-CODE:';
                     if (messageText.startsWith(prefix)) {
                         const code = messageText.substring(prefix.length);
-                        addCodeDownloadLink(code, 'code.mt5');
-                        showMessage('MT5 CODE AVAILABLE FOR DOWNLOAD', type);
+                        addCodeDownloadLink(code, `${currentFilename}.mt5`);
+                        messageText = 'MT5 CODE AVAILABLE FOR DOWNLOAD';
                     }
 
                     showMessage(messageText, type);
@@ -266,6 +266,7 @@
             }
 
             function reset() {
+                currentFilename = '_file_';
                 if (ws) {
                     ws.close();
                     start();

@@ -36,6 +36,7 @@ import addFormats from 'ajv-formats';
 import Anthropic from '@anthropic-ai/sdk';
 import { Logger } from '../util/logger';
 import * as fs from 'fs';
+import { start } from 'repl';
 
 /**
  * Interface for handling user input/output during the conversation.
@@ -76,7 +77,7 @@ Your job is to finally generate the json, so don't ask questions if the answers 
 (e.g. no need to ask questions about things that aren't directly reflected in the json schema). 
 Do not discuss or answer things that are not directly about the trading strategy to be generated. 
 When you send me json, send me nothing but json (no text explanation accompanying it). 
-If not sending JSON, then always preface your response with 'Q:'
+Try to keep your responses brief and to the point, and not too conversational.
 The customer might want certain values to be a variable instead of a hard-coded value. For example, the symbol to trade. 
 The given schema allows for that, in the format { var: '$VARNAME' }. Please make variable names all capitals and preface 
 them with $. No need to ask customers what variable names to use; choose ones that make sense to you. 
@@ -251,6 +252,16 @@ export class AnthropicConversation {
 
                 if (this._mockMode && this._outMessageCount >= 3) {
                     return MOCK_JSON;
+                }
+
+                console.log('IS THE MESSAGE JSON?');
+                if (
+                    !this.isJson(assistantMessage) &&
+                    !this.hasJson(assistantMessage)
+                ) {
+                    console.log('NO IT IS NOT!');
+                    console.log(assistantMessage);
+                    assistantMessage = 'Q:' + assistantMessage;
                 }
 
                 //display assistant response
@@ -599,6 +610,32 @@ export class AnthropicConversation {
         }
 
         return confirmed;
+    }
+
+    private isJson(s: string): boolean {
+        s = s.trim();
+        return (
+            (s.startsWith('{') && s.endsWith('}')) ||
+            (s.startsWith('[') && s.endsWith(']'))
+        );
+    }
+
+    private hasJson(s: string): boolean {
+        const startBracketIndex1 = s.indexOf('{');
+        const endBracketIndex1 = s.lastIndexOf('}');
+
+        const startBracketIndex2 = s.indexOf('[');
+        const endBracketIndex2 = s.lastIndexOf(']');
+
+        console.log('startBracketIndex1:', startBracketIndex1);
+        console.log('endBracketIndex1:', endBracketIndex1);
+        console.log('startBracketIndex2:', startBracketIndex2);
+        console.log('endBracketIndex2:', endBracketIndex2);
+
+        return (
+            (startBracketIndex1 >= 0 && endBracketIndex1 >= 0) ||
+            (startBracketIndex2 >= 0 && endBracketIndex2 >= 0)
+        );
     }
 
     /**

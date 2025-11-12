@@ -83,7 +83,7 @@ The given schema allows for that, in the format { var: '$VARNAME' }. Please make
 them with $. No need to ask customers what variable names to use; choose ones that make sense to you. 
 When you generate the final json document, give it a title and a description that make sense to you.`;
 const ANTHROPIC_LLM_MODEL = 'claude-sonnet-4-5-20250929';
-const DEFAULT_MAX_TOKENS = 4096;
+const DEFAULT_MAX_TOKENS = 8192;
 const CONSOLE_LOGGING_ENABLED = false;
 const MOCK_JSON: any = {
     name: 'SMA Crossover Strategy',

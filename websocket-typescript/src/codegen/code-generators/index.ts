@@ -70,5 +70,4 @@ export abstract class CodeGenerator<T> implements ASTVisitor<T> {
     abstract visitCandleFieldRef(node: CandleFieldRefNode): T;
 }
 
-export { JavaScriptCodeGenerator } from './javascript';
 export { MT5CodeGenerator } from './mt5';

@@ -3,7 +3,6 @@
  */
 
 import { createStrategyParser } from './parser';
-import { JavaScriptCodeGenerator } from './code-generators';
 import {
     strategy,
     data_indicator,
@@ -260,26 +259,8 @@ export function runCodeGenExample() {
     console.log('='.repeat(40));
     console.log();
 
-    //step 5: Generate JavaScript code
-    console.log('Step 5: Generating JavaScript code...');
-    const jsGenerator = new JavaScriptCodeGenerator();
-    const jsCode = jsGenerator.generate(ast);
-    console.log('✓ JavaScript code generated');
-    console.log();
-
-    console.log('JavaScript Code Preview:');
-    console.log('='.repeat(40));
-    const jsLines = jsCode.split('\n');
-    console.log(jsLines.slice(0, 50).join('\n'));
-    if (jsLines.length > 50) {
-        console.log('... (truncated) ...');
-    }
-    console.log('='.repeat(40));
-    console.log();
-
-    //step 6: Save generated code to files
     console.log('Step 6: Saving generated code...');
-    saveGeneratedCode(mt5Code, jsCode, ast.name || 'strategy');
+    saveGeneratedCode(mt5Code, ast.name || 'strategy');
     console.log();
 
     console.log('='.repeat(80));
@@ -344,18 +325,12 @@ function displayASTStructure(ast: any, indent: number = 0) {
     }
 }
 
-function saveGeneratedCode(
-    pythonCode: string,
-    jsCode: string,
-    strategyName: string
-) {
+function saveGeneratedCode(pythonCode: string, strategyName: string) {
     strategyName = strategyName.replace(' ', '_');
 
     console.log(`save MT5 code to: ${strategyName}_strategy.mq5`);
-    console.log(`save JavaScript code to: ${strategyName}_strategy.js`);
 
     fs.writeFileSync(`${strategyName}_strategy.mq5`, pythonCode, 'utf-8');
-    fs.writeFileSync(`${strategyName}_strategy.js`, jsCode, 'utf-8');
 }
 
 // ============================================================================
@@ -529,15 +504,10 @@ export function runCodeGenTests() {
     try {
         const { ast } = parser.parseAndValidate(exampleCodeGenStrategy);
         const mt5Gen = new MT5CodeGenerator();
-        const jsGen = new JavaScriptCodeGenerator();
 
-        const pythonCode = mt5Gen.generate(ast);
-        const jsCode = jsGen.generate(ast);
+        const mt5Code = mt5Gen.generate(ast);
 
-        console.log(`  ✓ MT5 code generated: ${pythonCode.length} characters`);
-        console.log(
-            `  ✓ JavaScript code generated: ${jsCode.length} characters`
-        );
+        console.log(`  ✓ MT5 code generated: ${mt5Code.length} characters`);
     } catch (error) {
         console.log(`  ✗ Failed: ${error}`);
     }

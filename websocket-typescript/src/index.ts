@@ -24,7 +24,6 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import { AnthropicConversation, IUserIO } from './llms/conversation';
 import { WebsocketConversationServer } from './server/websocket-server';
-import { WebsocketClient } from './client/websocket-client';
 import { runCodeGenExample, runCodeGenTests } from './codegen/example';
 dotenv.config();
 
@@ -66,7 +65,6 @@ async function main() {
     console.log('Application started successfully');
 
     const TEST_WSS_SERVER = true;
-    const TEST_WSS_CLIENT = false;
     const TEST_CODE_GEN = false;
 
     if (TEST_WSS_SERVER) {
@@ -77,40 +75,6 @@ async function main() {
             port: process.env.PORT ? parseInt(process.env.PORT) : 9000,
             jwtSecret: process.env.JWT_SECRET || 'secret',
         }).start();
-    }
-
-    if (TEST_WSS_CLIENT) {
-        const client = new WebsocketClient({
-            url: 'http://localhost:9000',
-        });
-
-        client.onMessage(async (data) => {
-            if (data.startsWith('{') && data.endsWith('}')) {
-                const message: any = JSON.parse(data);
-                if (message.type == 'message') {
-                    inputModule.onMessage(message.text);
-                }
-                if (message.type == 'prompt') {
-                    const response = await inputModule.getUserResponse(
-                        message.text
-                    );
-                    client.send(response);
-                }
-                if (message.type == 'stats') {
-                    inputModule.onStats(message.text);
-                }
-                if (message.type == 'error') {
-                    inputModule.onError(message.text);
-                }
-                if (message.type == 'question') {
-                    inputModule.onQuestion(message.text);
-                }
-            } else {
-                inputModule.onMessage(data);
-            }
-        });
-
-        await client.connect();
     }
 
     if (TEST_CODE_GEN) {

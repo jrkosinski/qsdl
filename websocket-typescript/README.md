@@ -165,20 +165,6 @@ new WebsocketConversationServer({
 }).start();
 ```
 
-### WebSocket Client
-
-```typescript
-const client = new WebsocketClient({
-    url: 'http://localhost:9000',
-});
-
-client.onMessage(async (data) => {
-    //handle incoming messages
-});
-
-await client.connect();
-```
-
 ## Schema Versions
 
 The project maintains multiple schema versions for backward compatibility:
